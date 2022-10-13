@@ -1,0 +1,7 @@
+{
+  "name": "util-importModel",
+  "version": "1.0.0",
+  "dependencies": {
+    "arangojs": "^7.5.0"
+  }
+}
