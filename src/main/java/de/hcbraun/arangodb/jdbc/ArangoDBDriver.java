@@ -48,12 +48,12 @@ public class ArangoDBDriver implements Driver {
 
   @Override
   public int getMajorVersion() {
-    return 0;
+    return ArangoDBJDBCVersion.major;
   }
 
   @Override
   public int getMinorVersion() {
-    return 1;
+    return ArangoDBJDBCVersion.minor;
   }
 
   @Override
