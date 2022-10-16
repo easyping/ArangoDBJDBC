@@ -83,6 +83,12 @@ public class TestSqlToAqlStatment {
   }
 
   @Test
+  public void testOuterJoinOnSQL_id() {
+    assertEquals("FOR c1 IN employee LET c2=DOCUMENT(c1.vehicle_id) RETURN MERGE(c1,c2)",
+      (new ArangoDBStatement(null)).getAQL("select * from employee outer join vehicle on employee.vehicle_id=vehicle._id", null).aql);
+  }
+
+  @Test
   public void testComments() {
     assertEquals("FOR c1 IN Country RETURN {land:c1.land,plz:c1.plz}",
       (new ArangoDBStatement(null)).getAQL("select land,plz  /* cols: land:s,plz:s */ from Country // Test", null).aql);

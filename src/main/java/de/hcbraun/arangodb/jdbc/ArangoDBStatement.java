@@ -561,7 +561,7 @@ public class ArangoDBStatement implements Statement {
     else {
       String q = qi.aql;
       if ((aqlQuery || sqlSelect) && !q.toLowerCase().contains("insert ") && !q.toLowerCase().contains("update ") &&
-              !q.toLowerCase().contains("remove ")) {
+        !q.toLowerCase().contains("remove ")) {
         if (lstRCols != null && !lstRCols.isEmpty()) {
           qi.rsmd = new ArangoDBResultSetMetaData(lstRCols);
         } else {
@@ -604,6 +604,7 @@ public class ArangoDBStatement implements Statement {
             if (aliasFrom == null)
               aliasFrom = dftAlias;
             String s1 = fromItem.getName() + "._key", s2 = aliasFrom + "._key";
+            String sI1 = fromItem.getName() + "._id", sId = null;
             for (Expression on : j.getOnExpressions()) {
               if (on instanceof EqualsTo) {
                 EqualsTo et = (EqualsTo) on;
@@ -611,18 +612,25 @@ public class ArangoDBStatement implements Statement {
                   filterPara = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
                 else if (et.getRightExpression().toString().equals(s1) || et.getRightExpression().toString().equals(s2))
                   filterPara = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
+                else if (et.getLeftExpression().toString().equals(sI1))
+                  sId = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
+                else if (et.getRightExpression().toString().equals(sI1))
+                  sId = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
               }
             }
-            if (filterPara != null) {
+            if (filterPara != null || sId != null) {
               sb.append(" LET ");
               if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null)
                 alias = fromItem.getAlias().getName();
               else
                 alias = "c" + (appendOpt.collectionNo++);
               lstTabAlias.put(fromItem.getName(), alias);
-              sb.append(alias).append("=DOCUMENT('").append(fromItem.getName()).append("',").append(filterPara).append(")");
+              if (sId != null)
+                sb.append(alias).append("=DOCUMENT(").append(sId).append(")");
+              else
+                sb.append(alias).append("=DOCUMENT('").append(fromItem.getName()).append("',").append(filterPara).append(")");
               if (!j.isOuter())
-                sb.append(" FILTER ").append(alias).append("._key");
+                sb.append(" FILTER ").append(alias).append(sId != null ? "._id" : "._key");
             } else if (j.isOuter()) {
               sb.append(" LET ");
               if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null) {
@@ -776,7 +784,7 @@ public class ArangoDBStatement implements Statement {
       for (SelectItem si : lstAlg) {
         if (first)
           first = false;
-        else if(appendOpt.additionalLstTabAlias != null)
+        else if (appendOpt.additionalLstTabAlias != null)
           break;
         else
           sb.append(",");
@@ -809,7 +817,7 @@ public class ArangoDBStatement implements Statement {
         for (SelectItem si : lstSep.get(key)) {
           if (first)
             first = false;
-          else if(appendOpt.additionalLstTabAlias != null)
+          else if (appendOpt.additionalLstTabAlias != null)
             break;
           else
             sb.append(",");
@@ -878,7 +886,7 @@ public class ArangoDBStatement implements Statement {
       Between between = (Between) exp;
       String col = appendExpression(between.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
       return (between.isNot() ? "!(" : "(") + col + ">=" + appendExpression(between.getBetweenExpressionStart(), lstTabAlias, dftAlias, appendOpt) + " && " +
-              col + "<=" + appendExpression(between.getBetweenExpressionEnd(), lstTabAlias, dftAlias, appendOpt) + ")";
+        col + "<=" + appendExpression(between.getBetweenExpressionEnd(), lstTabAlias, dftAlias, appendOpt) + ")";
     } else if (exp instanceof InExpression) {
       InExpression in = (InExpression) exp;
       String inValue;
