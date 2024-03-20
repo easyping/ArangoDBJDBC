@@ -802,7 +802,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             if (schema != null) {
               Map<String, Object> rule = (Map) schema.get("rule");
               Map<String, Object> props = (Map) rule.get("properties");
-              addColumns(props, cols, 0, (String) doc.getAttribute("name"), "");
+              addColumns(props, cols, 0, (String) doc.getAttribute("name"), "", doc);
             }
           }
         }
@@ -818,7 +818,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
           Map<String, Object> props = (Map) rule.get("properties");
 
           cols = new ArrayList<>();
-          addColumns(props, cols, 0, tableNamePattern, "");
+          addColumns(props, cols, 0, tableNamePattern, "", doc);
         }
       } catch (ArangoDBException e) {
         e.printStackTrace();
@@ -826,22 +826,38 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     }
     if (cols != null) {
       return new ArangoDBListResultSet(cols, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s," +
-              "TABLE_NAME:s,COLUMN_NAME:s,DATA_TYPE:i,COLUMN_SIZE:i,BUFFER_LENGTH:s,DECIMAL_DIGITS:i,NUM_PREC_RADIX:i," +
-              "NULLABLE:i,REMARKS:s,COLUMN_DEF:s,SQL_DATA_TYPE:i,SQL_DATETIME_SUB:i,CHAR_OCTET_LENGTH:i,ORDINAL_POSITION:i," +
-              "IS_NULLABLE:s,SCOPE_CATALOG:s,SCOPE_SCHEMA:s,SCOPE_TABLE:s,SOURCE_DATA_TYPE:i,IS_AUTOINCREMENT:s,IS_GENERATEDCOLUMN:s"));
+        "TABLE_NAME:s,COLUMN_NAME:s,DATA_TYPE:i,COLUMN_SIZE:i,BUFFER_LENGTH:s,DECIMAL_DIGITS:i,NUM_PREC_RADIX:i," +
+        "NULLABLE:i,REMARKS:s,COLUMN_DEF:s,SQL_DATA_TYPE:i,SQL_DATETIME_SUB:i,CHAR_OCTET_LENGTH:i,ORDINAL_POSITION:i," +
+        "IS_NULLABLE:s,SCOPE_CATALOG:s,SCOPE_SCHEMA:s,SCOPE_TABLE:s,SOURCE_DATA_TYPE:i,IS_AUTOINCREMENT:s,IS_GENERATEDCOLUMN:s"));
     }
     return null;
   }
 
-  private int addColumns(Map<String, Object> props, ArrayList<HashMap> cols, int colPos, String tableName, String prefix) {
+  private int addColumns(Map<String, Object> props, ArrayList<HashMap> cols, int colPos, String tableName, String prefix, BaseDocument docCompete) {
     for (String prop : props.keySet()) {
       Map m = (Map) props.get(prop);
       String dt = (String) m.get("type");
+      String ref = (String) m.get("$ref");
       String df = (String) m.get("format");
       Object uProp = m.get("properties");
-
+      // Schema reference declared?
+      if (ref != null) {
+        if (ref.startsWith("#/"))
+          ref = ref.substring(2);
+        String[] refs = ref.split("/");
+        if (docCompete != null) {
+          Map<String, Object> defs = (Map) docCompete.getAttribute(refs[0]);
+          if (defs != null) {
+            Map<String, Object> def = (Map) defs.get(refs[1]);
+            if (def != null) {
+              dt = (String) def.get("type");
+              uProp = def.get("properties");
+            }
+          }
+        }
+      }
       if ("object".equalsIgnoreCase(dt) && uProp != null) {
-        colPos = addColumns((Map<String, Object>) uProp, cols, colPos, tableName, prefix + prop + ".");
+        colPos = addColumns((Map<String, Object>) uProp, cols, colPos, tableName, prefix + prop + ".", docCompete);
       } else {
         int dataType = Types.VARCHAR;
         if ("string".equalsIgnoreCase(dt)) {
@@ -1014,8 +1030,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
 //            FILTER_CONDITION String => Filter condition, if any. (may be null)
     if (idx.size() > 0) {
       return new ArangoDBListResultSet(idx, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s," +
-              "TABLE_NAME:s,NON_UNIQUE:b,INDEX_QUALIFIER:s,INDEX_NAME:s,TYPE:i,ORDINAL_POSITION:i,COLUMN_NAME:s," +
-              "ASC_OR_DESC:s,CARDINALITY:i,PAGES:i,FILTER_CONDITION:s"));
+        "TABLE_NAME:s,NON_UNIQUE:b,INDEX_QUALIFIER:s,INDEX_NAME:s,TYPE:i,ORDINAL_POSITION:i,COLUMN_NAME:s," +
+        "ASC_OR_DESC:s,CARDINALITY:i,PAGES:i,FILTER_CONDITION:s"));
     }
     return null;
   }
