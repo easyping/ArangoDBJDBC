@@ -2,9 +2,7 @@ package de.hcbraun.arangodb.jdbc;
 
 import com.arangodb.ArangoDB;
 import com.arangodb.ArangoDatabase;
-import com.arangodb.DbName;
 import com.arangodb.Protocol;
-import com.arangodb.mapping.ArangoJack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +23,6 @@ public class ArangoDBConnection implements Connection {
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
     ArangoDB.Builder dbBld = new ArangoDB.Builder().host(host, Integer.parseInt(pdb[0]));
-    dbBld.serializer(new ArangoJack());
 
     for (String key : lstPara.keySet()) {
       if (!"password".equals(key))
@@ -39,16 +36,16 @@ public class ArangoDBConnection implements Connection {
       else if ("useSsl".equals(key))
         dbBld = dbBld.useSsl("true".equalsIgnoreCase(lstPara.get(key)));
       else if ("chunksize".equals(key))
-        dbBld = dbBld.chunksize(Integer.parseInt(lstPara.get(key)));
+        dbBld = dbBld.chunkSize(Integer.parseInt(lstPara.get(key)));
       else if ("connections.max".equals(key))
         dbBld = dbBld.maxConnections(Integer.parseInt(lstPara.get(key)));
       else if ("protocol".equals(key))
-        dbBld = dbBld.useProtocol("HTTP-JSON".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_JSON : "HTTP-VPACK".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_VPACK : Protocol.VST);
+        dbBld = dbBld.protocol("HTTP-JSON".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_JSON : "HTTP-VPACK".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_VPACK : Protocol.VST);
     }
     String databaseName = pdb.length > 1 ? pdb[1] : lstPara.get("database");
 
     ArangoDB db = dbBld.build();
-    database = db.db(DbName.of(databaseName));
+    database = db.db(databaseName);
     schema = databaseName;
 //    System.out.println("Database-Version: " + database.getVersion().getVersion());
   }

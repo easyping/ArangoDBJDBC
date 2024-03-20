@@ -568,7 +568,7 @@ public class ArangoDBStatement implements Statement {
           String r = q.substring(q.toLowerCase().lastIndexOf(" return "));
           q = q.substring(0, q.toLowerCase().lastIndexOf(" return ")) + " LIMIT 1 " + r;
           if (database != null) {
-            ArangoCursor<BaseDocument> cur = database.query(q, parameters, BaseDocument.class);
+            ArangoCursor<BaseDocument> cur = database.query(q, BaseDocument.class, parameters);
             if (cur.hasNext())
               qi.rsmd = new ArangoDBResultSetMetaData(cur.next());
             else
@@ -993,7 +993,7 @@ public class ArangoDBStatement implements Statement {
     if (!collections.isEmpty() && database != null) {
       HashMap<String, Object> bVars = new HashMap<>();
       bVars.put("cols", collections);
-      ArangoCursor<BaseDocument> cursor = database.query("FOR c IN @cols RETURN {name: c, schema: SCHEMA_GET(c)}", bVars, BaseDocument.class);
+      ArangoCursor<BaseDocument> cursor = database.query("FOR c IN @cols RETURN {name: c, schema: SCHEMA_GET(c)}", BaseDocument.class, bVars);
       if (cursor != null) {
         while (cursor.hasNext()) {
           BaseDocument doc = cursor.next();

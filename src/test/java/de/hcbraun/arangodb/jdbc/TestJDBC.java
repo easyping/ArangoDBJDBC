@@ -3,10 +3,9 @@ package de.hcbraun.arangodb.jdbc;
 import com.arangodb.ArangoCollection;
 import com.arangodb.ArangoDB;
 import com.arangodb.ArangoDatabase;
-import com.arangodb.DbName;
-import com.arangodb.mapping.ArangoJack;
 import com.arangodb.model.CollectionCreateOptions;
 import com.arangodb.model.CollectionSchema;
+import com.arangodb.util.RawJson;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -27,11 +26,10 @@ public class TestJDBC {
   public static void initDatabase() {
     String[] h = host.split(":");
     ArangoDB.Builder dbBld = new ArangoDB.Builder().host(h[0], Integer.parseInt(h[1]));
-    dbBld.serializer(new ArangoJack());
     dbBld.user(user);
     dbBld.password(password);
     ArangoDB db = dbBld.build();
-    ArangoDatabase database = db.db(DbName.of(databaseName));
+    ArangoDatabase database = db.db(databaseName);
     ArangoCollection col = database.collection("Country");
     if (!col.exists()) {
       CollectionCreateOptions cco = new CollectionCreateOptions();
@@ -46,9 +44,9 @@ public class TestJDBC {
         "\"isoCode3\",\"telephoneAreaCode\",\"language\"]}");
       cco.schema(cs);
       col.create(cco);
-      col.importDocuments("[{\"_key\":\"AC\",\"name\":\"Ascension\",\"isoCode2\":\"AC\",\"isoCode3\":\"ASC\",\"telephoneAreaCode\":\"+247\",\"timeZone\":\"-1\",\"language\":\"EN\",\"eu\":false,\"currency\":\"EUR\"}," +
+      col.importDocuments(RawJson.of("[{\"_key\":\"AC\",\"name\":\"Ascension\",\"isoCode2\":\"AC\",\"isoCode3\":\"ASC\",\"telephoneAreaCode\":\"+247\",\"timeZone\":\"-1\",\"language\":\"EN\",\"eu\":false,\"currency\":\"EUR\"}," +
         "{\"_key\":\"BE\",\"name\":\"Belgium\",\"isoCode2\":\"BE\",\"isoCode3\":\"BEL\",\"telephoneAreaCode\":\"+32\",\"timeZone\":\"+1\",\"language\":\"EN\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"06\",\"currency\":\"EUR\"}," +
-        "{\"_key\":\"DE\",\"name\":\"Deutschland\",\"isoCode2\":\"DE\",\"isoCode3\":\"DEU\",\"telephoneAreaCode\":\"+49\",\"timeZone\":\"+1\",\"language\":\"DE\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"01\",\"currency\":\"EUR\"}]");
+        "{\"_key\":\"DE\",\"name\":\"Deutschland\",\"isoCode2\":\"DE\",\"isoCode3\":\"DEU\",\"telephoneAreaCode\":\"+49\",\"timeZone\":\"+1\",\"language\":\"DE\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"01\",\"currency\":\"EUR\"}]"));
     }
     col = database.collection("Region");
     if (!col.exists()) {
@@ -58,7 +56,7 @@ public class TestJDBC {
       cs.setRule("{\"properties\":{\"_key\":{\"type\":\"string\"},\"_id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"additionalProperties\":true,\"required\":[\"name\"]}");
       cco.schema(cs);
       col.create(cco);
-      col.importDocuments("[{\"_key\":\"01\",\"name\":\"Deutschland\"},{\"_key\":\"06\",\"name\":\"Westeuropa\"}]");
+      col.importDocuments(RawJson.of("[{\"_key\":\"01\",\"name\":\"Deutschland\"},{\"_key\":\"06\",\"name\":\"Westeuropa\"}]"));
     }
   }
 

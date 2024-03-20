@@ -4,7 +4,6 @@ import com.arangodb.ArangoCursor;
 import com.arangodb.ArangoDBException;
 import com.arangodb.entity.BaseDocument;
 import com.arangodb.model.AqlQueryOptions;
-import com.arangodb.util.MapBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +14,8 @@ import java.net.URL;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,8 +25,8 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
 
   private String sql = null;
   private ArrayList<String> para = new ArrayList<>();
-  private MapBuilder mapBuild = new MapBuilder();
-  private ArrayList<MapBuilder> lstBatch = null;
+  private Map<String, Object> mapBuild = new LinkedHashMap<>();
+  private ArrayList<Map<String, Object>> lstBatch = null;
 
   protected ArangoDBPreparedStatement(ArangoDBConnection connection, String sql) {
     super(connection);
@@ -58,8 +59,8 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
   public ResultSet executeQuery() throws SQLException {
     logger.debug("executeQuery " + sql);
     try {
-      QueryInfo qi = getAQL(sql, mapBuild.get());
-      return new ArangoDBResultSet(database.query(qi.aql, qi.parameters, BaseDocument.class), this, qi.rsmd);
+      QueryInfo qi = getAQL(sql, mapBuild);
+      return new ArangoDBResultSet(database.query(qi.aql, BaseDocument.class, qi.parameters), this, qi.rsmd);
     } catch (ArangoDBException e) {
       e.printStackTrace();
       throw new SQLException(e.getErrorMessage());
@@ -70,8 +71,8 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
   public int executeUpdate() throws SQLException {
     logger.debug("executeUpdate " + sql);
     try {
-      QueryInfo qi = getAQL(sql, mapBuild.get());
-      ArangoCursor<BaseDocument> cursor = database.query(qi.aql, qi.parameters, BaseDocument.class);
+      QueryInfo qi = getAQL(sql, mapBuild);
+      ArangoCursor<BaseDocument> cursor = database.query(qi.aql, BaseDocument.class, qi.parameters);
       if (cursor != null) {
         int a = 0;
         while (cursor.hasNext()) {
@@ -81,7 +82,7 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
         return a;
       }
     } catch (ArangoDBException e) {
-      System.err.println("Error in sql " + sql + " with parameters " + mapBuild.get().toString());
+      System.err.println("Error in sql " + sql + " with parameters " + mapBuild.toString());
       e.printStackTrace();
       throw new SQLException(e.getErrorMessage());
     }
@@ -184,7 +185,7 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
 
   @Override
   public void clearParameters() throws SQLException {
-    mapBuild = new MapBuilder();
+    mapBuild = new LinkedHashMap<>();
   }
 
   @Override
@@ -200,12 +201,12 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
   @Override
   public boolean execute() throws SQLException {
     try {
-      QueryInfo qi = getAQL(sql, mapBuild.get());
-      ArangoCursor<BaseDocument> cursor = database.query(qi.aql, qi.parameters, BaseDocument.class);
+      QueryInfo qi = getAQL(sql, mapBuild);
+      ArangoCursor<BaseDocument> cursor = database.query(qi.aql, BaseDocument.class, qi.parameters);
       if (cursor != null && cursor.hasNext())
         return true;
     } catch (ArangoDBException e) {
-      System.err.println("Error in sql " + sql + " with parameters " + mapBuild.get().toString());
+      System.err.println("Error in sql " + sql + " with parameters " + mapBuild.toString());
       e.printStackTrace();
       throw new SQLException(e.getErrorMessage());
     }
@@ -217,7 +218,7 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
     if (lstBatch == null)
       lstBatch = new ArrayList<>();
     lstBatch.add(mapBuild);
-    mapBuild = new MapBuilder();
+    mapBuild = new LinkedHashMap<>();
   }
 
   @Override
@@ -227,9 +228,9 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
       AqlQueryOptions aqo = new AqlQueryOptions();
       aqo.count(true);
       ArrayList<Integer> ergLst = new ArrayList<>();
-      for (MapBuilder mb : lstBatch) {
-        QueryInfo qi = getAQL(sql, mb.get());
-        ArangoCursor<BaseDocument> erg = database.query(qi.aql, qi.parameters, aqo, BaseDocument.class);
+      for (Map mb : lstBatch) {
+        QueryInfo qi = getAQL(sql, mb);
+        ArangoCursor<BaseDocument> erg = database.query(qi.aql, BaseDocument.class, qi.parameters, aqo);
         ergLst.add(erg.getCount());
       }
       lstBatch = null;
