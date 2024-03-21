@@ -396,16 +396,19 @@ public class ArangoDBStatement implements Statement {
       } else if (parseStat instanceof Insert) {
         Insert insert = (Insert) parseStat;
         StringBuilder sb;
-        List<Expression> lstPara = null;
-        List<SelectItem> lstSelect = null;
-        if (insert.getSelect() != null) {
+        ExpressionList<?> lstPara = null;
+        List<SelectItem<?>> lstSelect = null;
+        if (insert.getSelect() instanceof PlainSelect) {
           String select = getAQL(insert.getSelect().toString(), parameters).aql;
-          sb = new StringBuilder(select.substring(0, select.indexOf(" RETURN {")));
-          lstSelect = ((PlainSelect) ((Select) insert.getSelect()).getSelectBody()).getSelectItems();
-          sb.append(" ");
+          if (select != null) {
+            sb = new StringBuilder(select.substring(0, select.indexOf(" RETURN {")));
+            sb.append(" ");
+          } else
+            sb = new StringBuilder();
+          lstSelect = insert.getPlainSelect().getSelectItems();
         } else {
           sb = new StringBuilder();
-          lstPara = ((ExpressionList) insert.getItemsList()).getExpressions();
+          lstPara = insert.getValues().getExpressions();
         }
         sb.append("INSERT {");
         List<Column> lstCol = insert.getColumns();
@@ -420,8 +423,7 @@ public class ArangoDBStatement implements Statement {
               sb.append("@p").append(((JdbcParameter) p).getIndex());
           } else if (lstSelect != null) {
             SelectItem si = lstSelect.get(i);
-            if (si instanceof SelectExpressionItem)
-              sb.append(appendExpression(((SelectExpressionItem) si).getExpression(), null, "c1", appendOpt));
+            sb.append(appendExpression(si.getExpression(), null, "c1", appendOpt));
           }
         }
         sb.append("} INTO ").append(insert.getTable().getName());
@@ -438,7 +440,7 @@ public class ArangoDBStatement implements Statement {
         sb.append(" UPDATE c1._key WITH {");
         for (UpdateSet us : update.getUpdateSets()) {
           List<Column> lstCol = us.getColumns();
-          List<Expression> lstPara = us.getExpressions();
+          ExpressionList<?> lstPara = us.getValues();
           for (int i = 0; i < lstCol.size(); i++) {
             if (i > 0)
               sb.append(",");
@@ -556,9 +558,9 @@ public class ArangoDBStatement implements Statement {
 
     if (comments != null)
       qi.rsmd = new ArangoDBResultSetMetaData(comments.toString());
-    else if (qi.aql.startsWith("RETURN LENGTH("))
+    else if (qi.aql != null && qi.aql.startsWith("RETURN LENGTH("))
       ;
-    else {
+    else if (qi.aql != null) {
       String q = qi.aql;
       if ((aqlQuery || sqlSelect) && !q.toLowerCase().contains("insert ") && !q.toLowerCase().contains("update ") &&
         !q.toLowerCase().contains("remove ")) {
@@ -729,7 +731,7 @@ public class ArangoDBStatement implements Statement {
     sb.append(" RETURN ");
     if (gSb != null)
       sb.append(gSb);
-    else if (plain.getSelectItems().get(0) instanceof AllColumns) {
+    else if (plain.getSelectItems().get(0).getExpression() instanceof AllColumns) {
       if (lstTabAlias.size() > 1)
         sb.append("MERGE(");
       lstRCols = new ArrayList<>();
@@ -766,9 +768,8 @@ public class ArangoDBStatement implements Statement {
       // List of columns must group in object, e.g. description:{DE:...}
       HashMap<String, ArrayList<SelectItem>> lstSep = new HashMap<>();
       for (SelectItem si : plain.getSelectItems()) {
-        SelectExpressionItem sei = (SelectExpressionItem) si;
-        if (sei.getExpression() instanceof Column) {
-          Column col = (Column) sei.getExpression();
+        if (si.getExpression() instanceof Column) {
+          Column col = (Column) si.getExpression();
           if (col.getTable() != null) {
             String tab = col.getTable().toString();
             if (tab.contains(".")) {
@@ -788,26 +789,23 @@ public class ArangoDBStatement implements Statement {
           break;
         else
           sb.append(",");
-        if (si instanceof SelectExpressionItem) {
-          SelectExpressionItem sei = (SelectExpressionItem) si;
-          if (appendOpt.additionalLstTabAlias == null) {
-            if (sei.getAlias() != null && sei.getAlias().getName() != null)
-              sb.append(sei.getAlias().getName());
-            else if (sei.getExpression() instanceof Column)
-              sb.append(((Column) sei.getExpression()).getColumnName().replaceAll("\"", ""));
-            sb.append(":");
-          }
-          sb.append(appendExpression(sei.getExpression(), lstTabAlias, dftAlias, appendOpt));
-          // Search ColInfo for ResultMetaData
-          if (sei.getExpression() instanceof Column) {
-            Column column = (Column) sei.getExpression();
-            HashMap<String, ColInfo> tabCols = lstColsDesc.get(column.getTable() != null ? column.getTable().getName() : dftTabName);
-            if (tabCols != null) {
-              ColInfo ci = tabCols.get(column.getColumnName());
-              if (ci == null)
-                ci = new ColInfo(column.getColumnName(), "NVARCHAR", Types.VARCHAR, String.class.getName());
-              lstRCols.add(ci);
-            }
+        if (appendOpt.additionalLstTabAlias == null) {
+          if (si.getAlias() != null && si.getAlias().getName() != null)
+            sb.append(si.getAlias().getName());
+          else if (si.getExpression() instanceof Column)
+            sb.append(((Column) si.getExpression()).getColumnName().replaceAll("\"", ""));
+          sb.append(":");
+        }
+        sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt));
+        // Search ColInfo for ResultMetaData
+        if (si.getExpression() instanceof Column) {
+          Column column = (Column) si.getExpression();
+          HashMap<String, ColInfo> tabCols = lstColsDesc.get(column.getTable() != null ? column.getTable().getName() : dftTabName);
+          if (tabCols != null) {
+            ColInfo ci = tabCols.get(column.getColumnName());
+            if (ci == null)
+              ci = new ColInfo(column.getColumnName(), "NVARCHAR", Types.VARCHAR, String.class.getName());
+            lstRCols.add(ci);
           }
         }
       }
@@ -821,8 +819,7 @@ public class ArangoDBStatement implements Statement {
             break;
           else
             sb.append(",");
-          SelectExpressionItem sei = (SelectExpressionItem) si;
-          Column col = (Column) sei.getExpression();
+          Column col = (Column) si.getExpression();
           if (start) {
             String[] tn = col.getTable().toString().split("\\.");
             for (int t = 1; t < tn.length; t++) {
@@ -831,14 +828,14 @@ public class ArangoDBStatement implements Statement {
             bc = tn.length - 1;
             start = false;
           }
-          if (sei.getAlias() != null && sei.getAlias().getName() != null)
-            sb.append(sei.getAlias().getName());
+          if (si.getAlias() != null && si.getAlias().getName() != null)
+            sb.append(si.getAlias().getName());
           else
             sb.append(col.getColumnName().replaceAll("\"", ""));
           sb.append(":");
-          sb.append(appendExpression(sei.getExpression(), lstTabAlias, dftAlias, appendOpt));
+          sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt));
           // Search ColInfo for ResultMetaData
-          if (sei.getExpression() instanceof Column) {
+          if (si.getExpression() instanceof Column) {
             String[] tn = col.getTable().toString().split("\\.");
             HashMap<String, ColInfo> tabCols = lstColsDesc.get(tn[0]);
             if (tabCols != null) {
@@ -890,23 +887,25 @@ public class ArangoDBStatement implements Statement {
     } else if (exp instanceof InExpression) {
       InExpression in = (InExpression) exp;
       String inValue;
-      if (in.getRightExpression() == null) {
-        if (in.getRightExpression() instanceof ExpressionList) {
-          StringBuilder sb = new StringBuilder("[");
-          boolean first = true;
-          for (Expression expItem : ((ExpressionList) in.getRightExpression()).getExpressions()) {
+      if (in.getRightExpression() instanceof ParenthesedExpressionList) {
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+        for (Object expItem : ((ParenthesedExpressionList) in.getRightExpression())) {
+          if (expItem instanceof Expression) {
             if (first)
               first = false;
             else
               sb.append(",");
-            sb.append(appendExpression(expItem, lstTabAlias, dftAlias, appendOpt));
+            sb.append(appendExpression((Expression) expItem, lstTabAlias, dftAlias, appendOpt));
           }
-          sb.append("]");
-          inValue = sb.toString();
-        } else
-          inValue = "[]";
+        }
+        sb.append("]");
+        inValue = sb.toString();
+      } else if (in.getRightExpression() instanceof ParenthesedSelect) {
+        String subSql = appendExpression(in.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
+        inValue = "(" + subSql.substring(0, subSql.length() - 3) + ")";
       } else
-        inValue = "(" + appendExpression(in.getRightExpression(), lstTabAlias, dftAlias, appendOpt) + ")";
+        inValue = "[]";
       return appendExpression(in.getLeftExpression(), lstTabAlias, dftAlias, appendOpt) + (in.isNot() ? " NOT " : "") + " IN " + inValue;
     } else if (exp instanceof IsNullExpression) {
       IsNullExpression isNull = (IsNullExpression) exp;
@@ -943,9 +942,9 @@ public class ArangoDBStatement implements Statement {
         appendOpt.aggregate.append(",");
       appendOpt.aggregate.append(ag).append("=").append(func.getName()).append("(").append(appendExpression(func.getParameters().getExpressions().get(0), lstTabAlias, dftAlias, appendOpt)).append(")");
       return ag;
-    } else if (exp instanceof SubSelect) {
-      SubSelect sub = (SubSelect) exp;
-      PlainSelect plain = (PlainSelect) sub.getSelectBody();
+    } else if (exp instanceof ParenthesedSelect) {
+      ParenthesedSelect sub = (ParenthesedSelect) exp;
+      PlainSelect plain = sub.getPlainSelect();
       appendOpt.additionalLstTabAlias = lstTabAlias;
       HashMap<String, String> subLstTabAlias = new HashMap<>();
       ArrayList<ColInfo> lstRCols = new ArrayList<>();

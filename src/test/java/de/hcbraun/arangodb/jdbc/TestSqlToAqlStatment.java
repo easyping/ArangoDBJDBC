@@ -152,5 +152,16 @@ public class TestSqlToAqlStatment {
       (new ArangoDBStatement(null)).getAQL("DELETE Country WHERE _key=?", null).aql);
   }
 
+  @Test
+  public void testSimpleWithIn() {
+    assertEquals("FOR c1 IN Article FILTER c1.group IN ['AB','CD','EF'] RETURN {type:c1.type}",
+      (new ArangoDBStatement(null)).getAQL("SELECT type FROM Article WHERE group IN ('AB', 'CD', 'EF')", null).aql);
+  }
+
+  @Test
+  public void testSimpleWithInSelect() {
+    assertEquals("FOR c1 IN Article FILTER c1.group IN ((FOR c2 IN AGroup RETURN c2.group)) RETURN {type:c1.type}",
+      (new ArangoDBStatement(null)).getAQL("SELECT type FROM Article WHERE group IN (SELECT group FROM AGroup)", null).aql);
+  }
 
 }
