@@ -421,6 +421,8 @@ public class ArangoDBStatement implements Statement {
             Expression p = lstPara.get(i);
             if (p instanceof JdbcParameter)
               sb.append("@p").append(((JdbcParameter) p).getIndex());
+            else
+              sb.append(appendExpression(p, null, "c1", appendOpt));
           } else if (lstSelect != null) {
             SelectItem si = lstSelect.get(i);
             sb.append(appendExpression(si.getExpression(), null, "c1", appendOpt));
@@ -951,6 +953,8 @@ public class ArangoDBStatement implements Statement {
       String sql = "(" + getPlainSelect(plain, subLstTabAlias, lstRCols, appendOpt) + ")[0]";
       appendOpt.additionalLstTabAlias = null;
       return sql;
+    } else if (exp instanceof UserVariable) {
+      return "@" + ((UserVariable)exp).getName();
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";
