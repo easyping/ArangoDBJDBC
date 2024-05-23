@@ -6,7 +6,7 @@
 
   <groupId>de.hcbraun.arangodb.jdbc</groupId>
   <artifactId>arangodb-jdbc</artifactId>
-  <version>1.1.0-SNAPSHOT</version>
+  <version>1.2.0-SNAPSHOT</version>
   <description>JDBC driver for ArangoDB (https://www.arangodb.com/)</description>
 
   <licenses>
@@ -29,6 +29,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
         <configuration>
           <source>8</source>
           <target>8</target>
@@ -62,7 +63,7 @@
     <dependency>
       <groupId>com.arangodb</groupId>
       <artifactId>arangodb-java-driver</artifactId>
-      <version>7.5.1</version>
+      <version>7.6.0</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -72,7 +73,7 @@
     <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter</artifactId>
-        <version>RELEASE</version>
+        <version>5.11.0-M2</version>
         <scope>test</scope>
     </dependency>
     <dependency>
