@@ -47,6 +47,9 @@ public class TestJDBC {
       col.importDocuments(RawJson.of("[{\"_key\":\"AC\",\"name\":\"Ascension\",\"isoCode2\":\"AC\",\"isoCode3\":\"ASC\",\"telephoneAreaCode\":\"+247\",\"timeZone\":\"-1\",\"language\":\"EN\",\"eu\":false,\"currency\":\"EUR\"}," +
         "{\"_key\":\"BE\",\"name\":\"Belgium\",\"isoCode2\":\"BE\",\"isoCode3\":\"BEL\",\"telephoneAreaCode\":\"+32\",\"timeZone\":\"+1\",\"language\":\"EN\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"06\",\"currency\":\"EUR\"}," +
         "{\"_key\":\"DE\",\"name\":\"Deutschland\",\"isoCode2\":\"DE\",\"isoCode3\":\"DEU\",\"telephoneAreaCode\":\"+49\",\"timeZone\":\"+1\",\"language\":\"DE\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"01\",\"currency\":\"EUR\"}]"));
+    } else {
+      if (col.documentExists("XINS"))
+        col.deleteDocument("XINS");
     }
     col = database.collection("Region");
     if (!col.exists()) {
@@ -57,6 +60,9 @@ public class TestJDBC {
       cco.schema(cs);
       col.create(cco);
       col.importDocuments(RawJson.of("[{\"_key\":\"01\",\"name\":\"Deutschland\"},{\"_key\":\"06\",\"name\":\"Westeuropa\"}]"));
+    } else {
+      if (col.documentExists("XINS"))
+        col.deleteDocument("XINS");
     }
   }
 
@@ -98,6 +104,71 @@ public class TestJDBC {
         }
         rs.close();
       }
+      con.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testInsertAndDelete() {
+    try {
+      Connection con = getConnection();
+      PreparedStatement pIns = con.prepareStatement("INSERT INTO Country (_key, name, isoCode2, isoCode3, telephoneAreaCode, language, eu) VALUES (?,?,?,?,?,?,?)");
+      pIns.setString(1, "XINS");
+      pIns.setString(2, "Insert Land");
+      pIns.setString(3, "IL");
+      pIns.setString(4, "ILD");
+      pIns.setString(5, "+99");
+      pIns.setString(6, "XX");
+      pIns.setBoolean(7, false);
+      assertEquals(pIns.executeUpdate(), 1);
+      pIns.close();
+      PreparedStatement stat = con.prepareStatement("SELECT name,language,eu FROM Country WHERE _key=?");
+      stat.setString(1, "XINS");
+      ResultSet rs = stat.executeQuery();
+      while (rs.next()) {
+        assertEquals("Insert Land", rs.getString(1));
+        assertEquals(false, rs.getBoolean(3));
+        assertEquals("XX", rs.getString(2));
+      }
+      PreparedStatement pDel = con.prepareStatement("DELETE FROM Country WHERE _key=?");
+      pDel.setString(1, "XINS");
+      assertEquals(pDel.executeUpdate(), 1);
+      pDel.close();
+      rs = stat.executeQuery();
+      assertEquals(false, rs.next());
+      stat.close();
+      con.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testUpdate() {
+    try {
+      Connection con = getConnection();
+      PreparedStatement pIns = con.prepareStatement("INSERT INTO Region (_key, name) VALUES ('XINS',?)");
+      pIns.setString(1, "Test-Region");
+      assertEquals(pIns.executeUpdate(), 1);
+      pIns.close();
+      PreparedStatement pUpd = con.prepareStatement("UPDATE Region SET name=? WHERE _key=?");
+      pUpd.setString(1, "Update-Region");
+      pUpd.setString(2, "XINS");
+      assertEquals(pUpd.executeUpdate(), 1);
+      pUpd.close();
+      PreparedStatement stat = con.prepareStatement("SELECT name FROM Region WHERE _key=?");
+      stat.setString(1, "XINS");
+      ResultSet rs = stat.executeQuery();
+      while (rs.next()) {
+        assertEquals("Update-Region", rs.getString(1));
+      }
+      PreparedStatement pDel = con.prepareStatement("DELETE FROM Region WHERE _key=?");
+      pDel.setString(1, "XINS");
+      assertEquals(pDel.executeUpdate(), 1);
+      pDel.close();
+      stat.close();
       con.close();
     } catch (Exception e) {
       e.printStackTrace();
