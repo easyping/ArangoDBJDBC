@@ -40,7 +40,9 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
       String[] part = sql.split("\\?");
       StringBuilder nsql = new StringBuilder();
       int p = 1;
-      for (int i = 0; i < part.length - 1; i++) {
+      boolean ends = sql.trim().endsWith("?");
+      int max = ends ? part.length : part.length - 1;
+      for (int i = 0; i < max; i++) {
         String s = part[i];
         nsql.append(s);
         s = "para" + p++;
@@ -48,7 +50,8 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
         nsql.append("@");
         nsql.append(s);
       }
-      nsql.append(part[part.length - 1]);
+      if (!ends)
+        nsql.append(part[part.length - 1]);
       sql = nsql.toString();
       logger.debug("Neu-Sql: " + sql);
     }
@@ -247,7 +250,7 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, int length)
-          throws SQLException {
+    throws SQLException {
     // TODO Auto-generated method stub
 
   }
