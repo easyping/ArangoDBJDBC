@@ -6,7 +6,7 @@
 
   <groupId>de.hcbraun.arangodb.jdbc</groupId>
   <artifactId>arangodb-jdbc</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.2.1-SNAPSHOT</version>
   <description>JDBC driver for ArangoDB (https://www.arangodb.com/)</description>
 
   <licenses>
