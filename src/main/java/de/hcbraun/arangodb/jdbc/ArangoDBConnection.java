@@ -104,7 +104,7 @@ public class ArangoDBConnection implements Connection {
   public boolean getAutoCommit() throws SQLException {
     // TODO Auto-generated method stub
     logger.debug("Connection - getAutoCommit");
-    return false;
+    return true;
   }
 
   @Override
