@@ -39,8 +39,12 @@ public class ArangoDBConnection implements Connection {
         dbBld = dbBld.chunkSize(Integer.parseInt(lstPara.get(key)));
       else if ("connections.max".equals(key))
         dbBld = dbBld.maxConnections(Integer.parseInt(lstPara.get(key)));
-      else if ("protocol".equals(key))
-        dbBld = dbBld.protocol("HTTP-JSON".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_JSON : "HTTP-VPACK".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_VPACK : Protocol.VST);
+      else if ("protocol".equals(key)) {
+        dbBld = dbBld.protocol("HTTP2-JSON".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP2_JSON :
+          "HTTP-JSON".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_JSON :
+            "HTTP2-VPACK".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP2_VPACK :
+              "HTTP-VPACK".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_VPACK : Protocol.VST);
+      }
     }
     String databaseName = pdb.length > 1 ? pdb[1] : lstPara.get("database");
 
