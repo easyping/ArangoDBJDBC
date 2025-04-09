@@ -839,6 +839,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       String dt = (String) m.get("type");
       String ref = (String) m.get("$ref");
       String df = (String) m.get("format");
+      List lstOneOf = (List) m.get("oneOf");
       Object uProp = m.get("properties");
       // Schema reference declared?
       if (ref != null) {
@@ -846,11 +847,12 @@ public class ArangoDBMetaData implements DatabaseMetaData {
           ref = ref.substring(2);
         String[] refs = ref.split("/");
         if (docCompete != null) {
-          Map<String, Object> defs = (Map) docCompete.getAttribute(refs[0]);
+          Map<String, Object> rule = (Map) docCompete.getAttribute("rule");
+          Map<String, Object> defs = (Map) rule.get(refs[0]);
           if (defs != null) {
             Map<String, Object> def = (Map) defs.get(refs[1]);
             if (def != null) {
-              dt = (String) def.get("type");
+              dt = "object";
               uProp = def.get("properties");
             }
           }
@@ -859,22 +861,47 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       if ("object".equalsIgnoreCase(dt) && uProp != null) {
         colPos = addColumns((Map<String, Object>) uProp, cols, colPos, tableName, prefix + prop + ".", docCompete);
       } else {
-        int dataType = Types.VARCHAR;
-        if ("string".equalsIgnoreCase(dt)) {
-          if ("YYYY-MM-DDTHH:MM:SSZ".equalsIgnoreCase(df) || "'yyyy-MM-ddTHH:mm:ss.SSSZ'".equalsIgnoreCase(df))
-            dataType = Types.TIMESTAMP;
-          else if ("YYYY-MM-DD".equalsIgnoreCase(df))
-            dataType = Types.DATE;
-          else if ("HH:MM".equalsIgnoreCase(df) || "HH:MM:SS".equalsIgnoreCase(df) || "HH:MM:SS.SSS".equalsIgnoreCase(df))
-            dataType = Types.TIME;
-        } else if ("integer".equalsIgnoreCase(dt))
-          dataType = Types.INTEGER;
-        else if ("number".equalsIgnoreCase(dt))
-          dataType = Types.DOUBLE;
-        else if ("boolean".equalsIgnoreCase(dt))
-          dataType = Types.BOOLEAN;
-        else if ("array".equalsIgnoreCase(dt))
-          dataType = Types.ARRAY;
+        int dataType = Types.NULL;
+        int nullable = columnNullableUnknown;
+        if (lstOneOf != null && !lstOneOf.isEmpty()) {
+          for(Object o : lstOneOf) {
+            Map<String, Object> moo = (Map) o;
+            String mDt = (String) moo.get("type");
+            String mRef = (String) moo.get("$ref");
+            String mDf = (String) moo.get("format");
+            if ("null".equalsIgnoreCase(mDt)) {
+              nullable = columnNullable;
+            } else {
+              if ("object".equalsIgnoreCase(mDt)) {
+                Object muProp = moo.get("properties");
+                if (mRef != null) {
+                  if (mRef.startsWith("#/"))
+                    mRef = mRef.substring(2);
+                  String[] refs = mRef.split("/");
+                  if (docCompete != null) {
+                    Map<String, Object> rule = (Map) docCompete.getAttribute("rule");
+                    Map<String, Object> defs = (Map) rule.get(refs[0]);
+                    if (defs != null) {
+                      Map<String, Object> def = (Map) defs.get(refs[1]);
+                      if (def != null) {
+                        muProp = def.get("properties");
+                      }
+                    }
+                  }
+                }
+                if (muProp != null)
+                  colPos = addColumns((Map<String, Object>) muProp, cols, colPos, tableName, prefix + prop + ".", docCompete);
+              } else {
+                int t = getColumnDataType(mDt, mDf);
+                if (dataType == Types.NULL)
+                  dataType = t;
+                else if(t == Types.VARCHAR && dataType != Types.ARRAY)
+                  dataType = Types.VARCHAR;
+              }
+            }
+          }
+        } else
+          dataType = getColumnDataType(dt, df);
 
         colPos++;
         HashMap<String, Object> row = new HashMap<>();
@@ -888,7 +915,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         row.put("BUFFER_LENGTH", null);
         row.put("DECIMAL_DIGITS", 0);
         row.put("NUM_PREC_RADIX", 10);
-        row.put("NULLABLE", columnNullableUnknown);
+        row.put("NULLABLE", nullable);
         row.put("REMARKS", null);
         row.put("COLUMN_DEF", null);
         row.put("SQL_DATA_TYPE", 0);
@@ -907,6 +934,25 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     }
 
     return colPos;
+  }
+
+  private int getColumnDataType(String dt, String df) {
+    if ("string".equalsIgnoreCase(dt)) {
+      if ("YYYY-MM-DDTHH:MM:SSZ".equalsIgnoreCase(df) || "yyyy-MM-ddTHH:mm:ss.SSSZ".equalsIgnoreCase(df))
+        return Types.TIMESTAMP;
+      else if ("YYYY-MM-DD".equalsIgnoreCase(df))
+        return Types.DATE;
+      else if ("HH:MM".equalsIgnoreCase(df) || "HH:MM:SS".equalsIgnoreCase(df) || "HH:MM:SS.SSS".equalsIgnoreCase(df))
+        return Types.TIME;
+    } else if ("integer".equalsIgnoreCase(dt))
+      return Types.INTEGER;
+    else if ("number".equalsIgnoreCase(dt))
+      return Types.DOUBLE;
+    else if ("boolean".equalsIgnoreCase(dt))
+      return Types.BOOLEAN;
+    else if ("array".equalsIgnoreCase(dt))
+      return Types.ARRAY;
+    return Types.VARCHAR;
   }
 
   @Override
