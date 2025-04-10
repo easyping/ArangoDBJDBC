@@ -1020,19 +1020,25 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getImportedKeys(String s, String s1, String s2) throws SQLException {
     logger.debug("getImportedKeys");
-    return null;
+    return new ArangoDBListResultSet(new ArrayList<HashMap>(), new ArangoDBResultSetMetaData(
+      "// cols: PKTABLE_CAT:s,PKTABLE_SCHEM:s,PKTABLE_NAME:s,PKCOLUMN_NAME:s,FKTABLE_CAT:s,FKTABLE_SCHEM:s," +
+        "FKTABLE_NAME:s,FKCOLUMN_NAME:s,KEY_SEQ:s,UPDATE_RULE:i,DELETE_RULE:i,FK_NAME:s,PK_NAME:s,DEFERRABILITY:i"));
   }
 
   @Override
   public ResultSet getExportedKeys(String s, String s1, String s2) throws SQLException {
     logger.debug("getExportedKeys");
-    return null;
+    return new ArangoDBListResultSet(new ArrayList<HashMap>(), new ArangoDBResultSetMetaData(
+      "// cols: PKTABLE_CAT:s,PKTABLE_SCHEM:s,PKTABLE_NAME:s,PKCOLUMN_NAME:s,FKTABLE_CAT:s,FKTABLE_SCHEM:s," +
+        "FKTABLE_NAME:s,FKCOLUMN_NAME:s,KEY_SEQ:s,UPDATE_RULE:i,DELETE_RULE:i,FK_NAME:s,PK_NAME:s,DEFERRABILITY:i"));
   }
 
   @Override
   public ResultSet getCrossReference(String s, String s1, String s2, String s3, String s4, String s5) throws SQLException {
     logger.debug("getCrossReference");
-    return null;
+    return new ArangoDBListResultSet(new ArrayList<HashMap>(), new ArangoDBResultSetMetaData(
+      "// cols: PKTABLE_CAT:s,PKTABLE_SCHEM:s,PKTABLE_NAME:s,PKCOLUMN_NAME:s,FKTABLE_CAT:s,FKTABLE_SCHEM:s," +
+        "FKTABLE_NAME:s,FKCOLUMN_NAME:s,KEY_SEQ:s,UPDATE_RULE:i,DELETE_RULE:i,FK_NAME:s,PK_NAME:s,DEFERRABILITY:i"));
   }
 
   @Override
@@ -1097,12 +1103,9 @@ public class ArangoDBMetaData implements DatabaseMetaData {
 //    CARDINALITY int => When TYPE is tableIndexStatistic, then this is the number of rows in the table; otherwise, it is the number of unique values in the index.
 //            PAGES int => When TYPE is tableIndexStatisic then this is the number of pages used for the table, otherwise it is the number of pages used for the current index.
 //            FILTER_CONDITION String => Filter condition, if any. (may be null)
-    if (idx.size() > 0) {
-      return new ArangoDBListResultSet(idx, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s," +
-        "TABLE_NAME:s,NON_UNIQUE:b,INDEX_QUALIFIER:s,INDEX_NAME:s,TYPE:i,ORDINAL_POSITION:i,COLUMN_NAME:s," +
-        "ASC_OR_DESC:s,CARDINALITY:i,PAGES:i,FILTER_CONDITION:s"));
-    }
-    return null;
+    return new ArangoDBListResultSet(idx, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s," +
+      "TABLE_NAME:s,NON_UNIQUE:b,INDEX_QUALIFIER:s,INDEX_NAME:s,TYPE:i,ORDINAL_POSITION:i,COLUMN_NAME:s," +
+      "ASC_OR_DESC:s,CARDINALITY:i,PAGES:i,FILTER_CONDITION:s"));
   }
 
   @Override
