@@ -1044,7 +1044,52 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getTypeInfo() throws SQLException {
     logger.debug("getTypeInfo");
-    return null;
+    ArrayList<HashMap> types = new ArrayList<>();
+    HashMap<String, Object> row = new HashMap<>();
+    row.put("TYPE_NAME", "VARCHAR");
+    row.put("DATA_TYPE", Types.VARCHAR);
+    row.put("NULLABLE", typeNullable);
+    row.put("CASE_SENSITIVE", true);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "DOUBLE");
+    row.put("DATA_TYPE", Types.DOUBLE);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "INTEGER");
+    row.put("DATA_TYPE", Types.INTEGER);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "DATE");
+    row.put("DATA_TYPE", Types.DATE);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "TIME");
+    row.put("DATA_TYPE", Types.TIME);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "TIMESTAMP");
+    row.put("DATA_TYPE", Types.TIMESTAMP);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "BOOLEAN");
+    row.put("DATA_TYPE", Types.BOOLEAN);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    row = new HashMap<>();
+    row.put("TYPE_NAME", "ARRAY");
+    row.put("DATA_TYPE", Types.ARRAY);
+    row.put("NULLABLE", typeNullable);
+    types.add(row);
+    return new ArangoDBListResultSet(types, new ArangoDBResultSetMetaData(
+      "// cols: TYPE_NAME:s,DATA_TYPE:i,PRECISION:i,LITERAL_PREFIX:s,LITERAL_SUFFIX:s,CREATE_PARAMS:s," +
+        "NULLABLE:i,CASE_SENSITIVE:b,SEARCHABLE:i,UNSIGNED_ATTRIBUTE:b,FIXED_PREC_SCALE:b,AUTO_INCREMENT:b," +
+        "LOCAL_TYPE_NAME:s,MINIMUM_SCALE:i,MAXIMUM_SCALE:i,SQL_DATA_TYPE:i,SQL_DATETIME_SUB:i,NUM_PREC_RADIX:i"));
   }
 
   //    Parameters:
