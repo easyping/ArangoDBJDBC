@@ -840,6 +840,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       String ref = (String) m.get("$ref");
       String df = (String) m.get("format");
       List lstOneOf = (List) m.get("oneOf");
+      List enumType = (List) m.get("enum");
       Object uProp = m.get("properties");
       // Schema reference declared?
       if (ref != null) {
@@ -863,8 +864,9 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       } else {
         int dataType = Types.NULL;
         int nullable = columnNullableUnknown;
+        String remarks = null;
         if (lstOneOf != null && !lstOneOf.isEmpty()) {
-          for(Object o : lstOneOf) {
+          for (Object o : lstOneOf) {
             Map<String, Object> moo = (Map) o;
             String mDt = (String) moo.get("type");
             String mRef = (String) moo.get("$ref");
@@ -895,11 +897,26 @@ public class ArangoDBMetaData implements DatabaseMetaData {
                 int t = getColumnDataType(mDt, mDf);
                 if (dataType == Types.NULL)
                   dataType = t;
-                else if(t == Types.VARCHAR && dataType != Types.ARRAY)
+                else if (t == Types.VARCHAR && dataType != Types.ARRAY)
                   dataType = Types.VARCHAR;
               }
             }
           }
+        } else if (enumType != null && !enumType.isEmpty()) {
+          for (Object o : enumType) {
+            if ("null".equalsIgnoreCase(o.toString())) {
+              nullable = columnNullable;
+            } else {
+              if ((dataType == Types.NULL || dataType == Types.BOOLEAN) && o instanceof Number) {
+                dataType = Types.DOUBLE;
+              } else if (o instanceof String) {
+                dataType = Types.VARCHAR;
+              } else if (dataType == Types.NULL && o instanceof Boolean) {
+                dataType = Types.BOOLEAN;
+              }
+            }
+          }
+          remarks = enumType.toString();
         } else
           dataType = getColumnDataType(dt, df);
 
@@ -916,7 +933,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         row.put("DECIMAL_DIGITS", 0);
         row.put("NUM_PREC_RADIX", 10);
         row.put("NULLABLE", nullable);
-        row.put("REMARKS", null);
+        row.put("REMARKS", remarks);
         row.put("COLUMN_DEF", null);
         row.put("SQL_DATA_TYPE", 0);
         row.put("SQL_DATETIME_SUB", 0);
