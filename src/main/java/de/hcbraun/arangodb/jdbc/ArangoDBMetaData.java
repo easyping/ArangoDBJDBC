@@ -841,6 +841,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       String df = (String) m.get("format");
       List lstOneOf = (List) m.get("oneOf");
       List enumType = (List) m.get("enum");
+      Number multipleOf = (Number) m.get("multipleOf");
       Object uProp = m.get("properties");
       // Schema reference declared?
       if (ref != null) {
@@ -871,6 +872,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             String mDt = (String) moo.get("type");
             String mRef = (String) moo.get("$ref");
             String mDf = (String) moo.get("format");
+            Number mMultipleOf = (Number) moo.get("multipleOf");
             if ("null".equalsIgnoreCase(mDt)) {
               nullable = columnNullable;
             } else {
@@ -894,7 +896,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
                 if (muProp != null)
                   colPos = addColumns((Map<String, Object>) muProp, cols, colPos, tableName, prefix + prop + ".", docCompete);
               } else {
-                int t = getColumnDataType(mDt, mDf);
+                int t = getColumnDataType(mDt, mDf, mMultipleOf);
                 if (dataType == Types.NULL)
                   dataType = t;
                 else if (t == Types.VARCHAR && dataType != Types.ARRAY)
@@ -918,7 +920,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
           }
           remarks = enumType.toString();
         } else
-          dataType = getColumnDataType(dt, df);
+          dataType = getColumnDataType(dt, df, multipleOf);
 
         colPos++;
         HashMap<String, Object> row = new HashMap<>();
@@ -953,7 +955,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     return colPos;
   }
 
-  private int getColumnDataType(String dt, String df) {
+  private int getColumnDataType(String dt, String df, Number multipleOf) {
     if ("string".equalsIgnoreCase(dt)) {
       if ("YYYY-MM-DDTHH:MM:SSZ".equalsIgnoreCase(df) || "yyyy-MM-ddTHH:mm:ss.SSSZ".equalsIgnoreCase(df))
         return Types.TIMESTAMP;
@@ -963,9 +965,13 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         return Types.TIME;
     } else if ("integer".equalsIgnoreCase(dt))
       return Types.INTEGER;
-    else if ("number".equalsIgnoreCase(dt))
+    else if ("number".equalsIgnoreCase(dt)) {
+      if (multipleOf != null) {
+        if (multipleOf instanceof Integer || multipleOf.doubleValue() % 1 == 0)
+          return Types.INTEGER;
+      }
       return Types.DOUBLE;
-    else if ("boolean".equalsIgnoreCase(dt))
+    } else if ("boolean".equalsIgnoreCase(dt))
       return Types.BOOLEAN;
     else if ("array".equalsIgnoreCase(dt))
       return Types.ARRAY;
