@@ -997,9 +997,18 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getVersionColumns(String s, String s1, String s2) throws SQLException {
+  public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
     logger.debug("getVersionColumns");
-    return null;
+    ArrayList<HashMap> cols = new ArrayList<>();
+    HashMap<String, Object> row = new HashMap<>();
+    row.put("COLUMN_NAME", "_rev");
+    row.put("DATA_TYPE", Types.VARCHAR);
+    row.put("TYPE_NAME", "VARCHAR");
+    row.put("COLUMN_SIZE", 50);
+    row.put("PSEUDO_COLUMN", versionColumnPseudo);
+    cols.add(row);
+    return new ArangoDBListResultSet(cols, new ArangoDBResultSetMetaData("// cols: SCOPE:i,COLUMN_NAME:s," +
+      "DATA_TYPE:i,TYPE_NAME:s,COLUMN_SIZE:i,BUFFER_LENGTH:i,DECIMAL_DIGITS:i,PSEUDO_COLUMN:i"));
   }
 
   @Override
