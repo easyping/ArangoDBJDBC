@@ -981,19 +981,22 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getColumnPrivileges(String s, String s1, String s2, String s3) throws SQLException {
     logger.debug("getColumnPrivileges");
-    return null;
+    return new ArangoDBListResultSet(new ArrayList<HashMap>(), new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s," +
+      "TABLE_SCHEM:s,TABLE_NAME:s,GRANTOR:s,GRANTEE:s,PRIVILEGE:s,IS_GRANTABLE:s"));
   }
 
   @Override
   public ResultSet getTablePrivileges(String s, String s1, String s2) throws SQLException {
     logger.debug("getTablePrivileges");
-    return null;
+    return new ArangoDBListResultSet(new ArrayList<HashMap>(), new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s," +
+      "TABLE_SCHEM:s,TABLE_NAME:s,GRANTOR:s,GRANTEE:s,PRIVILEGE:s,IS_GRANTABLE:s"));
   }
 
   @Override
   public ResultSet getBestRowIdentifier(String s, String s1, String s2, int i, boolean b) throws SQLException {
     logger.debug("getBestRowIdentifier");
-    return null;
+    return new ArangoDBListResultSet(new ArrayList<HashMap>(), new ArangoDBResultSetMetaData("// cols: SCOPE:i,COLUMN_NAME:s," +
+      "DATA_TYPE:i,TYPE_NAME:s,COLUMN_SIZE:i,BUFFER_LENGTH:i,DECIMAL_DIGITS:i,PSEUDO_COLUMN:i"));
   }
 
   @Override
