@@ -12,17 +12,17 @@ public class ArangoDBListResultSet extends ArangoDBResultSet {
 
   private final Logger logger = LoggerFactory.getLogger(ArangoDBListResultSet.class);
 
-  private List<HashMap> lst;
-  private Iterator<HashMap> it = null;
-  private HashMap cur;
+  private List<HashMap<String, Object>> lst;
+  private Iterator<HashMap<String, Object>> it = null;
+  private HashMap<String, Object> cur;
 
-  protected ArangoDBListResultSet(List<HashMap> lst) {
+  protected ArangoDBListResultSet(List<HashMap<String, Object>> lst) {
     super(null, null, null);
     this.lst = lst;
     logger.debug("Count-Data-Rows: " + lst.size());
   }
 
-  protected ArangoDBListResultSet(List<HashMap> lst, ArangoDBResultSetMetaData rsmd) {
+  protected ArangoDBListResultSet(List<HashMap<String, Object>> lst, ArangoDBResultSetMetaData rsmd) {
     super(null, null, rsmd);
     this.lst = lst;
     try {
