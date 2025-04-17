@@ -26,6 +26,7 @@ import java.sql.Date;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class ArangoDBStatement implements Statement {
 
@@ -613,6 +614,11 @@ public class ArangoDBStatement implements Statement {
     sb.append(alias).append(" IN ").append(fromItem.getName());
     dftTabName = fromItem.getName();
     lstTabAlias.put(fromItem.getName(), alias);
+    // List of defined column alias. for group "return" output
+    HashMap<String, String> lstColAlias = plain.getSelectItems().stream().
+      filter(si -> si.getExpression() instanceof Column && si.getAlias() != null).
+      collect(Collectors.toMap(si -> si.getExpression().toString(), si -> si.getAlias().getName(), (a, b) -> b, HashMap::new));
+
     if (plain.getJoins() != null && plain.getJoins().size() > 0) {
       for (Join j : plain.getJoins()) {
         fromItem = (Table) j.getRightItem();
@@ -713,7 +719,10 @@ public class ArangoDBStatement implements Statement {
             gSb = new StringBuilder("{");
           else
             gSb.append(",");
-          gSb.append(getSqlColumn((Column) gExp, null, null, appendOpt));
+          if (lstColAlias.containsKey(gExp.toString()))
+            gSb.append(lstColAlias.get(gExp.toString()));
+          else
+            gSb.append(getSqlColumn((Column) gExp, null, null, appendOpt));
           gSb.append(":").append("g").append(g);
         }
       }
