@@ -170,4 +170,11 @@ public class TestSqlToAqlStatment {
       (new ArangoDBStatement(null, "__")).getAQL("SELECT type FROM Article WHERE changeInfo__createUser='9304'", null).aql);
   }
 
+  @Test
+  public void testSimpleSelectName() {
+    // Since no connection is specified, make the schema substitution in the test.
+    assertEquals("FOR c1 IN BusinessPartner COLLECT g0=c1.name RETURN {BusinessPartner_name:g0}",
+      (new ArangoDBStatement(null)).getAQL("select BusinessPartner.name as BusinessPartner_name from TESTDB.BusinessPartner BusinessPartner group by BusinessPartner.name".replaceAll("(( |,)TESTDB\\.)" , " "), null).aql);
+  }
+
 }
