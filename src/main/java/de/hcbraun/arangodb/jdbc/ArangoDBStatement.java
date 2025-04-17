@@ -388,8 +388,9 @@ public class ArangoDBStatement implements Statement {
     if (this.connection != null) {
       try {
         String s = this.connection.getSchema();
-        sql = sql.replaceAll("(( |,)" + s + "\\.)" , " ");
-      } catch (SQLException e) {}
+        sql = sql.replaceAll("(( |,)" + s + "\\.)", " ");
+      } catch (SQLException e) {
+      }
     }
 
     QueryInfo qi = new QueryInfo();
@@ -618,6 +619,14 @@ public class ArangoDBStatement implements Statement {
     HashMap<String, String> lstColAlias = plain.getSelectItems().stream().
       filter(si -> si.getExpression() instanceof Column && si.getAlias() != null).
       collect(Collectors.toMap(si -> si.getExpression().toString(), si -> si.getAlias().getName(), (a, b) -> b, HashMap::new));
+    // List of defined column as function with alias. for collect aggregate
+    HashMap<String, String> lstColAggAlias = new HashMap<>();
+    for (SelectItem si : plain.getSelectItems()) {
+      if (si.getExpression() instanceof Function) {
+        String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt);
+        lstColAggAlias.put(si.getAlias().getName(), ag);
+      }
+    }
 
     if (plain.getJoins() != null && plain.getJoins().size() > 0) {
       for (Join j : plain.getJoins()) {
@@ -720,20 +729,35 @@ public class ArangoDBStatement implements Statement {
             gSb = new StringBuilder("{");
           else
             gSb.append(",");
-          if (lstColAlias.containsKey(gExp.toString()))
+          lstColAliasGroup.put(gExp.toString(), "g" + g);
+          if (lstColAlias.containsKey(gExp.toString())) {
             gSb.append(lstColAlias.get(gExp.toString()));
-          else
+            // add alias column name for group/collect
+            if (lstColAliasGroup.containsKey(gExp.toString()))
+              lstColAliasGroup.put(lstColAlias.get(gExp.toString()), "g" + g);
+          } else
             gSb.append(getSqlColumn((Column) gExp, null, null, appendOpt));
           gSb.append(":").append("g").append(g);
-          lstColAliasGroup.put(gExp.toString(), "g" + g);
         }
+      }
+      // Add aggregate column to return
+      for (String key : lstColAggAlias.keySet()) {
+        String ag = lstColAggAlias.get(key);
+        if (gSb == null)
+          gSb = new StringBuilder("{");
+        else
+          gSb.append(",");
+        gSb.append(key).append(":").append(ag);
       }
       if (gSb != null)
         gSb.append("}");
-      if (plain.getHaving() != null) {
-        String agFilter = appendExpression(plain.getHaving(), lstTabAlias, dftAlias, appendOpt);
-        if (appendOpt.aggregate != null && agFilter != null)
-          sb.append(" AGGREGATE ").append(appendOpt.aggregate).append(" FILTER ").append(agFilter);
+      if (appendOpt.aggregate != null || plain.getHaving() != null) {
+        String agFilter = null;
+        if (plain.getHaving() != null)
+          agFilter = appendExpression(plain.getHaving(), lstTabAlias, dftAlias, appendOpt);
+        sb.append(" AGGREGATE ").append(appendOpt.aggregate);
+        if (agFilter != null)
+          sb.append(" FILTER ").append(agFilter);
         appendOpt.aggregate = null;
       }
     }

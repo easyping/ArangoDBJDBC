@@ -187,4 +187,14 @@ public class TestSqlToAqlStatment {
         "order by state".replaceAll("(( |,)TESTDB\\.)" , " "), null).aql);
   }
 
+  @Test
+  public void testSimpleSelectOrderCustomerSum() {
+    assertEquals("FOR c1 IN Order1 COLLECT g0=c1.customerBP AGGREGATE ag1=Sum(c1.priceTotal) SORT g0 RETURN {Order_customerBP:g0,Sum_Order_priceTotal:ag1}",
+      (new ArangoDBStatement(null)).getAQL("select Order1.customerBP as Order_customerBP, \n" +
+        "Sum(Order1.priceTotal) as Sum_Order_priceTotal\n" +
+        "from Order1 Order1\n" +
+        "group by Order1.customerBP\n" +
+        "order by Order_customerBP", null).aql);
+  }
+
 }
