@@ -135,13 +135,13 @@ public class ArangoDBResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public String getColumnLabel(int i) throws SQLException {
-    logger.debug("getColumnLabel");
+    logger.debug("getColumnLabel " + i + ": " + cols.get(i - 1).name);
     return cols.get(i - 1).name;
   }
 
   @Override
   public String getColumnName(int i) throws SQLException {
-    logger.debug("getColumnName");
+    logger.debug("getColumnName " + i + ": " + cols.get(i - 1).name);
     return cols.get(i - 1).name;
   }
 
