@@ -53,7 +53,7 @@ public class ArangoDBConnection implements Connection {
 
     ArangoDB db = dbBld.build();
     database = db.db(databaseName);
-    schema = databaseName;
+    schema = databaseName.replaceAll("[^a-zA-Z_]", "");
 //    System.out.println("Database-Version: " + database.getVersion().getVersion());
     if (separatorStructColumn != null)
       logger.info("Connection use separatorStructColumn: " + separatorStructColumn);
