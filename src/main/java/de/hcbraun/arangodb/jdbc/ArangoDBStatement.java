@@ -598,7 +598,8 @@ public class ArangoDBStatement implements Statement {
     StringBuilder sb = new StringBuilder("FOR ");
     String alias, dftAlias, dftTabName;
     Table fromItem = (Table) plain.getFromItem();
-    if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null)
+    if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+      !fromItem.getAlias().getName().equals(fromItem.getName()))
       alias = fromItem.getAlias().getName();
     else
       alias = "c" + (appendOpt.collectionNo++);
