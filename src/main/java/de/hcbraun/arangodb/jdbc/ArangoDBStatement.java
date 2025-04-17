@@ -384,6 +384,12 @@ public class ArangoDBStatement implements Statement {
       sql = newSql.toString();
       System.out.println(comments);
     }
+    if (this.connection != null) {
+      try {
+        String s = this.connection.getSchema();
+        sql = sql.replaceAll("(( |,)" + s + "\\.)" , " ");
+      } catch (SQLException e) {}
+    }
 
     QueryInfo qi = new QueryInfo();
     qi.parameters = parameters;
