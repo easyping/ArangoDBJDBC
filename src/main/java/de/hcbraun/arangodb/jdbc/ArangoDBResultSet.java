@@ -408,7 +408,7 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public int findColumn(String s) throws SQLException {
-    logger.debug("findColumn - colname");
+    logger.debug("findColumn - colname: " + s);
     if(lstCols != null) {
       int i = 0;
       for(ColInfo ci : lstCols) {
