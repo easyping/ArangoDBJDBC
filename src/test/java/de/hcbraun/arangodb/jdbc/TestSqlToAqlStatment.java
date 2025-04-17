@@ -177,4 +177,14 @@ public class TestSqlToAqlStatment {
       (new ArangoDBStatement(null)).getAQL("select BusinessPartner.name as BusinessPartner_name from TESTDB.BusinessPartner BusinessPartner group by BusinessPartner.name".replaceAll("(( |,)TESTDB\\.)" , " "), null).aql);
   }
 
+  @Test
+  public void testSimpleSelectOrderState() {
+    // Since no connection is specified, make the schema substitution in the test.
+    assertEquals("FOR c1 IN Order COLLECT g0=c1.state SORT g0 RETURN {state:g0}",
+      (new ArangoDBStatement(null)).getAQL("select state\n" +
+        "from TESTDB.Order\n" +
+        "group by state\n" +
+        "order by state".replaceAll("(( |,)TESTDB\\.)" , " "), null).aql);
+  }
+
 }

@@ -707,6 +707,7 @@ public class ArangoDBStatement implements Statement {
     }
     // GROUP BY / HAVING => COLLECT / AGGREGATE
     StringBuilder gSb = null;
+    HashMap<String, String> lstColAliasGroup = new HashMap<>();
     if (plain.getGroupBy() != null) {
       sb.append(" COLLECT ");
       List<Expression> lstGrp = plain.getGroupBy().getGroupByExpressionList().getExpressions();
@@ -724,6 +725,7 @@ public class ArangoDBStatement implements Statement {
           else
             gSb.append(getSqlColumn((Column) gExp, null, null, appendOpt));
           gSb.append(":").append("g").append(g);
+          lstColAliasGroup.put(gExp.toString(), "g" + g);
         }
       }
       if (gSb != null)
@@ -744,7 +746,10 @@ public class ArangoDBStatement implements Statement {
           first = false;
         else
           sb.append(",");
-        sb.append(appendExpression(o.getExpression(), lstTabAlias, dftAlias, appendOpt));
+        if (lstColAliasGroup.containsKey(o.getExpression().toString()))
+          sb.append(lstColAliasGroup.get(o.getExpression().toString()));
+        else
+          sb.append(appendExpression(o.getExpression(), lstTabAlias, dftAlias, appendOpt));
         if (!o.isAsc())
           sb.append(" desc");
       }
