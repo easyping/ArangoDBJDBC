@@ -40,6 +40,7 @@ public class ArangoDBStatement implements Statement {
   protected ArangoDatabase database = null;
 
   private int maxRows = 0;
+  private String separatorStructColumn = null;
 
   private static class AppendOption {
     int aggregateNo = 0, collectionNo = 1;
@@ -52,6 +53,14 @@ public class ArangoDBStatement implements Statement {
     this.connection = connection;
     if (connection != null)
       database = connection.getDatabase();
+  }
+
+  protected ArangoDBStatement(ArangoDBConnection connection, String separatorStructColumn) {
+    this.connection = connection;
+    if (connection != null)
+      database = connection.getDatabase();
+    if (separatorStructColumn != null && !separatorStructColumn.isEmpty() && !".".equals(separatorStructColumn))
+      this.separatorStructColumn = separatorStructColumn;
   }
 
   @Override
@@ -416,7 +425,7 @@ public class ArangoDBStatement implements Statement {
           if (i > 0)
             sb.append(",");
           Column col = lstCol.get(i);
-          sb.append(col.getColumnName()).append(":");
+          sb.append(modifyColumnName(col)).append(":");
           if (lstPara != null) {
             Expression p = lstPara.get(i);
             if (p instanceof JdbcParameter)
@@ -795,7 +804,7 @@ public class ArangoDBStatement implements Statement {
           if (si.getAlias() != null && si.getAlias().getName() != null)
             sb.append(si.getAlias().getName());
           else if (si.getExpression() instanceof Column)
-            sb.append(((Column) si.getExpression()).getColumnName().replaceAll("\"", ""));
+            sb.append(modifyColumnName((Column) si.getExpression()).replaceAll("\"", ""));
           sb.append(":");
         }
         sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt));
@@ -804,9 +813,9 @@ public class ArangoDBStatement implements Statement {
           Column column = (Column) si.getExpression();
           HashMap<String, ColInfo> tabCols = lstColsDesc.get(column.getTable() != null ? column.getTable().getName() : dftTabName);
           if (tabCols != null) {
-            ColInfo ci = tabCols.get(column.getColumnName());
+            ColInfo ci = tabCols.get(modifyColumnName(column));
             if (ci == null)
-              ci = new ColInfo(column.getColumnName(), "NVARCHAR", Types.VARCHAR, String.class.getName());
+              ci = new ColInfo(modifyColumnName(column), "NVARCHAR", Types.VARCHAR, String.class.getName());
             lstRCols.add(ci);
           }
         }
@@ -833,7 +842,7 @@ public class ArangoDBStatement implements Statement {
           if (si.getAlias() != null && si.getAlias().getName() != null)
             sb.append(si.getAlias().getName());
           else
-            sb.append(col.getColumnName().replaceAll("\"", ""));
+            sb.append(modifyColumnName(col).replaceAll("\"", ""));
           sb.append(":");
           sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt));
           // Search ColInfo for ResultMetaData
@@ -844,10 +853,10 @@ public class ArangoDBStatement implements Statement {
               StringBuilder sbCol = new StringBuilder();
               for (int cn = 1; cn < tn.length; cn++)
                 sbCol.append(tn[cn]).append(".");
-              sbCol.append(col.getColumnName());
+              sbCol.append(modifyColumnName(col));
               ColInfo ci = tabCols.get(sbCol.toString());
               if (ci == null)
-                ci = new ColInfo(col.getColumnName(), "NVARCHAR", Types.VARCHAR, String.class.getName());
+                ci = new ColInfo(modifyColumnName(col), "NVARCHAR", Types.VARCHAR, String.class.getName());
               lstRCols.add(ci);
             }
           }
@@ -954,7 +963,7 @@ public class ArangoDBStatement implements Statement {
       appendOpt.additionalLstTabAlias = null;
       return sql;
     } else if (exp instanceof UserVariable) {
-      return "@" + ((UserVariable)exp).getName();
+      return "@" + ((UserVariable) exp).getName();
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";
@@ -988,7 +997,13 @@ public class ArangoDBStatement implements Statement {
       }
     } else
       tab = dftAlias;
-    return (tab != null ? tab + "." : "") + col.getColumnName().replaceAll("\"", "");
+    return (tab != null ? tab + "." : "") + modifyColumnName(col).replaceAll("\"", "");
+  }
+
+  private String modifyColumnName(Column col) {
+    if (separatorStructColumn != null)
+      return col.getColumnName().replaceAll(separatorStructColumn, ".");
+    return col.getColumnName();
   }
 
   private HashMap<String, HashMap<String, ColInfo>> readCollectionSchema(Collection<String> collections) {

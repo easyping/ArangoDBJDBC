@@ -16,12 +16,14 @@ public class ArangoDBMetaData implements DatabaseMetaData {
 
   private final Logger logger = LoggerFactory.getLogger(ArangoDBMetaData.class);
   private String schema = "adbdbo";
+  private String separatorStructColumn = null;
 
   ArangoDBConnection con;
 
-  public ArangoDBMetaData(ArangoDBConnection con, String schema) {
+  public ArangoDBMetaData(ArangoDBConnection con, String schema, String separatorStructColumn) {
     this.con = con;
     this.schema = schema;
+    this.separatorStructColumn = separatorStructColumn == null ? "." : separatorStructColumn;
   }
 
   @Override
@@ -872,7 +874,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         }
       }
       if ("object".equalsIgnoreCase(dt) && uProp != null) {
-        colPos = addColumns((Map<String, Object>) uProp, cols, colPos, tableName, prefix + prop + ".", docCompete);
+        colPos = addColumns((Map<String, Object>) uProp, cols, colPos, tableName, prefix + prop + separatorStructColumn, docCompete);
       } else {
         int dataType = Types.NULL;
         int nullable = columnNullableUnknown;
@@ -905,7 +907,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
                   }
                 }
                 if (muProp != null)
-                  colPos = addColumns((Map<String, Object>) muProp, cols, colPos, tableName, prefix + prop + ".", docCompete);
+                  colPos = addColumns((Map<String, Object>) muProp, cols, colPos, tableName, prefix + prop + separatorStructColumn, docCompete);
               } else {
                 int t = getColumnDataType(mDt, mDf, mMultipleOf);
                 if (dataType == Types.NULL)

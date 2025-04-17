@@ -28,8 +28,8 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
   private Map<String, Object> mapBuild = new LinkedHashMap<>();
   private ArrayList<Map<String, Object>> lstBatch = null;
 
-  protected ArangoDBPreparedStatement(ArangoDBConnection connection, String sql) {
-    super(connection);
+  protected ArangoDBPreparedStatement(ArangoDBConnection connection, String sql, String separatorStructColumn) {
+    super(connection, separatorStructColumn);
 
     Pattern pattern = Pattern.compile("@[\\w]+");
     Matcher matcher = pattern.matcher(sql);

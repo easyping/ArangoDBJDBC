@@ -164,4 +164,10 @@ public class TestSqlToAqlStatment {
       (new ArangoDBStatement(null)).getAQL("SELECT type FROM Article WHERE group IN (SELECT group FROM AGroup)", null).aql);
   }
 
+  @Test
+  public void testSimpleSelectWithSeparator() {
+    assertEquals("FOR c1 IN Article FILTER c1.changeInfo.createUser=='9304' RETURN {type:c1.type}",
+      (new ArangoDBStatement(null, "__")).getAQL("SELECT type FROM Article WHERE changeInfo__createUser='9304'", null).aql);
+  }
+
 }
