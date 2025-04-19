@@ -617,18 +617,6 @@ public class ArangoDBStatement implements Statement {
     sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
     dftTabName = getAliasCollection(fromItem.getName());
     lstTabAlias.put(fromItem.getName(), alias);
-    // List of defined column alias. for group "return" output
-    HashMap<String, String> lstColAlias = plain.getSelectItems().stream().
-      filter(si -> si.getExpression() instanceof Column && si.getAlias() != null).
-      collect(Collectors.toMap(si -> si.getExpression().toString(), si -> si.getAlias().getName(), (a, b) -> b, HashMap::new));
-    // List of defined column as function with alias. for collect aggregate
-    HashMap<String, String> lstColAggAlias = new HashMap<>();
-    for (SelectItem si : plain.getSelectItems()) {
-      if (si.getExpression() instanceof Function) {
-        String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt);
-        lstColAggAlias.put(si.getAlias().getName(), ag);
-      }
-    }
 
     if (plain.getJoins() != null && plain.getJoins().size() > 0) {
       for (Join j : plain.getJoins()) {
@@ -710,6 +698,18 @@ public class ArangoDBStatement implements Statement {
           sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
           lstTabAlias.put(fromItem.getName(), alias);
         }
+      }
+    }
+    // List of defined column alias. for group "return" output
+    HashMap<String, String> lstColAlias = plain.getSelectItems().stream().
+      filter(si -> si.getExpression() instanceof Column && si.getAlias() != null).
+      collect(Collectors.toMap(si -> si.getExpression().toString(), si -> si.getAlias().getName(), (a, b) -> b, HashMap::new));
+    // List of defined column as function with alias. for collect aggregate
+    HashMap<String, String> lstColAggAlias = new HashMap<>();
+    for (SelectItem si : plain.getSelectItems()) {
+      if (si.getExpression() instanceof Function) {
+        String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt);
+        lstColAggAlias.put(si.getAlias().getName(), ag);
       }
     }
     if (plain.getWhere() != null) {
