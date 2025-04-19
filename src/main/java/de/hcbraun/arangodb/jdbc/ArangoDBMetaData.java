@@ -753,7 +753,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
           lst.add(row);
       }
       lst.sort(Comparator.comparing(CollectionEntity::getName));
-      return new ArangoDBCollectionResultSet(lst, schema);
+      return new ArangoDBCollectionResultSet(lst, schema, con);
     }
 
     return null;
@@ -804,7 +804,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             if (schema != null) {
               Map<String, Object> rule = (Map) schema.get("rule");
               Map<String, Object> props = (Map) rule.get("properties");
-              addColumns(props, cols, 0, (String) doc.getAttribute("name"), "", doc);
+              addColumns(props, cols, 0, con.getCollectionAlias((String) doc.getAttribute("name")), "", doc);
             }
           }
         }
@@ -813,7 +813,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       }
     } else {
       try {
-        ArangoCursor<BaseDocument> cursor = con.getDatabase().query("RETURN SCHEMA_GET('" + tableNamePattern + "')", BaseDocument.class);
+        ArangoCursor<BaseDocument> cursor = con.getDatabase().query("RETURN SCHEMA_GET('" + con.getAliasCollection(tableNamePattern) + "')", BaseDocument.class);
         if (cursor != null) {
           BaseDocument doc = cursor.next();
           Map<String, Object> rule = (Map) doc.getAttribute("rule");
@@ -1126,7 +1126,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) throws SQLException {
     logger.debug("getIndexInfo");
-    ArangoCollection col = con.getDatabase().collection(table);
+    ArangoCollection col = con.getDatabase().collection(con.getAliasCollection(table));
     Collection<IndexEntity> indexes = col.getIndexes();
 
     ArrayList<HashMap<String, Object>> idx = new ArrayList<>();

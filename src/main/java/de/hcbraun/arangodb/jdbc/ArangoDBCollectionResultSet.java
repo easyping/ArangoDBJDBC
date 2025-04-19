@@ -16,12 +16,14 @@ public class ArangoDBCollectionResultSet extends ArangoDBResultSet {
   CollectionEntity curCol = null;
   Iterator<CollectionEntity> it = null;
   private String schema = "adbdbo";
+  private ArangoDBConnection connection;
 
-  protected ArangoDBCollectionResultSet(Collection<CollectionEntity> lstCol, String schema) {
+  protected ArangoDBCollectionResultSet(Collection<CollectionEntity> lstCol, String schema, ArangoDBConnection connection) {
     super(null, null, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s,TABLE_NAME:s," +
             "TABLE_TYPE:s,REMARKS:s,TYPE_CAT:s,TYPE_SCHEM:s,TYPE_NAME:s,SELF_REFERENCING_COL_NAME:s,REF_GENERATION:s"));
     this.lstCol = lstCol;
     this.schema = schema;
+    this.connection = connection;
     logger.debug("Collection-Count: " + lstCol.size() + " / " + schema);
   }
 
@@ -49,7 +51,7 @@ public class ArangoDBCollectionResultSet extends ArangoDBResultSet {
   protected Object getFieldValue(String selectExpression) {
     switch (selectExpression) {
       case "TABLE_NAME":
-        return curCol.getName();
+        return connection.getCollectionAlias(curCol.getName());
       case "TABLE_TYPE":
         return "TABLE";
       case "REMARKS":

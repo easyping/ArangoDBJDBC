@@ -612,8 +612,8 @@ public class ArangoDBStatement implements Statement {
     else
       alias = "c" + (appendOpt.collectionNo++);
     dftAlias = alias;
-    sb.append(alias).append(" IN ").append(fromItem.getName());
-    dftTabName = fromItem.getName();
+    sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
+    dftTabName = getAliasCollection(fromItem.getName());
     lstTabAlias.put(fromItem.getName(), alias);
     // List of defined column alias. for group "return" output
     HashMap<String, String> lstColAlias = plain.getSelectItems().stream().
@@ -663,7 +663,7 @@ public class ArangoDBStatement implements Statement {
               if (sId != null)
                 sb.append(alias).append("=DOCUMENT(").append(sId).append(")");
               else
-                sb.append(alias).append("=DOCUMENT('").append(fromItem.getName()).append("',").append(filterPara).append(")");
+                sb.append(alias).append("=DOCUMENT('").append(getAliasCollection(fromItem.getName())).append("',").append(filterPara).append(")");
               if (!j.isOuter())
                 sb.append(" FILTER ").append(alias).append(sId != null ? "._id" : "._key");
             } else if (j.isOuter()) {
@@ -674,7 +674,7 @@ public class ArangoDBStatement implements Statement {
               } else
                 alias = "c" + (appendOpt.collectionNo++);
               String oAlias = "c" + (appendOpt.collectionNo++);
-              sb.append(alias).append("=(FOR ").append(oAlias).append(" IN ").append(fromItem.getName()).append(" FILTER ");
+              sb.append(alias).append("=(FOR ").append(oAlias).append(" IN ").append(getAliasCollection(fromItem.getName())).append(" FILTER ");
               lstTabAlias.put(fromItem.getName(), oAlias);
               for (Expression on : j.getOnExpressions()) {
                 // alias in sql change in new alias
@@ -692,7 +692,7 @@ public class ArangoDBStatement implements Statement {
                 alias = fromItem.getAlias().getName();
               else
                 alias = "c" + (appendOpt.collectionNo++);
-              sb.append(alias).append(" IN ").append(fromItem.getName()).append(" FILTER ");
+              sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName())).append(" FILTER ");
               lstTabAlias.put(fromItem.getName(), alias);
               for (Expression on : j.getOnExpressions()) {
                 sb.append(appendExpression(on, lstTabAlias, dftAlias, appendOpt));
@@ -705,7 +705,7 @@ public class ArangoDBStatement implements Statement {
             alias = fromItem.getAlias().getName();
           else
             alias = "c" + (appendOpt.collectionNo++);
-          sb.append(alias).append(" IN ").append(fromItem.getName());
+          sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
           lstTabAlias.put(fromItem.getName(), alias);
         }
       }
@@ -1055,7 +1055,11 @@ public class ArangoDBStatement implements Statement {
     HashMap<String, HashMap<String, ColInfo>> lstColsDesc = new HashMap<>();
     if (!collections.isEmpty() && database != null) {
       HashMap<String, Object> bVars = new HashMap<>();
-      bVars.put("cols", collections);
+      Collection<String> lstCol = new ArrayList<>();
+      for (String col : collections) {
+        lstCol.add(getAliasCollection(col));
+      }
+      bVars.put("cols", lstCol);
       ArangoCursor<BaseDocument> cursor = database.query("FOR c IN @cols RETURN {name: c, schema: SCHEMA_GET(c)}", BaseDocument.class, bVars);
       if (cursor != null) {
         while (cursor.hasNext()) {
@@ -1110,6 +1114,18 @@ public class ArangoDBStatement implements Statement {
         cols.put(prefix + prop, colI);
       }
     }
+  }
+
+  protected String getAliasCollection(String alias) {
+    if (connection != null)
+      return connection.getAliasCollection(alias);
+    return alias;
+  }
+
+  protected String getCollectionAlias(String collection) {
+    if (connection != null)
+      return connection.getCollectionAlias(collection);
+    return collection;
   }
 
 }

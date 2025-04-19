@@ -20,6 +20,8 @@ public class ArangoDBConnection implements Connection {
   private String userName = null;
   private String schema = "adbdbo";
   private String separatorStructColumn = null;
+  private HashMap<String, String> lstCollectionAlias = new HashMap<>();
+  private HashMap<String, String> lstAliasCollection = new HashMap<>();
 
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
@@ -47,6 +49,14 @@ public class ArangoDBConnection implements Connection {
               "HTTP-VPACK".equalsIgnoreCase(lstPara.get(key)) ? Protocol.HTTP_VPACK : Protocol.VST);
       } else if ("separatorStructColumn".equals(key)) {
         separatorStructColumn = lstPara.get(key);
+      } else if ("collectionAlias".equals(key)) {
+        String[] c = lstPara.get(key).split(",");
+        for (String s : c) {
+          String[] p = s.split(":");
+          lstCollectionAlias.put(p[0], p[1]);
+          lstAliasCollection.put(p[1], p[0]);
+          logger.info("Collection-Alias: {} -> {}", p[0], p[1]);
+        }
       }
     }
     String databaseName = pdb.length > 1 ? pdb[1] : lstPara.get("database");
@@ -422,5 +432,15 @@ public class ArangoDBConnection implements Connection {
 
   protected ArangoDatabase getDatabase() {
     return database;
+  }
+
+  protected String getCollectionAlias(String collection) {
+    String a = lstCollectionAlias.get(collection);
+    return a != null ? a : collection;
+  }
+
+  protected String getAliasCollection(String alias) {
+    String c = lstAliasCollection.get(alias);
+    return c != null ? c : alias;
   }
 }
