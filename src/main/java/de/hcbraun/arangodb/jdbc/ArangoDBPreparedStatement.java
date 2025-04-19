@@ -60,7 +60,7 @@ public class ArangoDBPreparedStatement extends ArangoDBStatement implements Prep
 
   @Override
   public ResultSet executeQuery() throws SQLException {
-    logger.debug("executeQuery " + sql);
+    logger.debug("executeQuery-SQL: " + sql);
     try {
       QueryInfo qi = getAQL(sql, mapBuild);
       return new ArangoDBResultSet(database.query(qi.aql, BaseDocument.class, qi.parameters), this, qi.rsmd);

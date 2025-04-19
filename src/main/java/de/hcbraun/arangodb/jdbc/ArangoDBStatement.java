@@ -583,6 +583,7 @@ public class ArangoDBStatement implements Statement {
       String q = qi.aql;
       if ((aqlQuery || sqlSelect) && !q.toLowerCase().contains("insert ") && !q.toLowerCase().contains("update ") &&
         !q.toLowerCase().contains("remove ")) {
+        logger.debug("RSMD-aql: {}", q);
         if (lstRCols != null && !lstRCols.isEmpty()) {
           qi.rsmd = new ArangoDBResultSetMetaData(lstRCols);
         } else {
@@ -599,6 +600,7 @@ public class ArangoDBStatement implements Statement {
       } else
         qi.rsmd = null;
     }
+    logger.debug("aql: {}", qi.aql);
     return qi;
   }
 
