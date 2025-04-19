@@ -780,6 +780,20 @@ public class ArangoDBStatement implements Statement {
           sb.append(" FILTER ").append(agFilter);
         appendOpt.aggregate = null;
       }
+    } else if (appendOpt.aggregate != null) {
+      sb.append(" COLLECT AGGREGATE ").append(appendOpt.aggregate);
+      appendOpt.aggregate = null;
+      // Add aggregate column to return
+      for (String key : lstColAggAlias.keySet()) {
+        String ag = lstColAggAlias.get(key);
+        if (gSb == null)
+          gSb = new StringBuilder("{");
+        else
+          gSb.append(",");
+        gSb.append(key).append(":").append(ag);
+      }
+      if (gSb != null)
+        gSb.append("}");
     }
 
     if (plain.getOrderByElements() != null) {

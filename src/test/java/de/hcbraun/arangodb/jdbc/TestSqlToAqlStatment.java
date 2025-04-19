@@ -210,4 +210,13 @@ public class TestSqlToAqlStatment {
         "order by aOrder_customerBP, Address_name1", null).aql);
   }
 
+  @Test
+  public void testSimpleSelectOrderMinMaxDate() {
+    assertEquals("FOR c1 IN aOrder FILTER c1.state=='40' COLLECT AGGREGATE ag1=Max(c1.orderDate),ag2=Min(c1.orderDate) RETURN {Max_aOrder_orderDate:ag1,Min_aOrder_orderDate:ag2}",
+      (new ArangoDBStatement(null)).getAQL("select Max(aOrder.orderDate) as Max_aOrder_orderDate, \n" +
+        "Min(aOrder.orderDate) as Min_aOrder_orderDate\n" +
+        "from TESTHNLERP.aOrder aOrder\n" +
+        "where (aOrder.state = '40')", null).aql);
+  }
+
 }
