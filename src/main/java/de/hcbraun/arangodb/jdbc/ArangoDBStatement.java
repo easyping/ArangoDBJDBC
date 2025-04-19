@@ -641,11 +641,21 @@ public class ArangoDBStatement implements Statement {
                   sId = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
                 else if (et.getRightExpression().toString().equals(sI1))
                   sId = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
+              } if (on instanceof Parenthesis) {
+                Parenthesis p = (Parenthesis) on;
+                if (p.getExpression() instanceof EqualsTo) {
+                  EqualsTo et = (EqualsTo) p.getExpression();
+                  if (et.getLeftExpression().toString().equals(s1) || et.getLeftExpression().toString().equals(s2))
+                    filterPara = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
+                  else if (et.getRightExpression().toString().equals(s1) || et.getRightExpression().toString().equals(s2))
+                    filterPara = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
+                }
               }
             }
             if (filterPara != null || sId != null) {
               sb.append(" LET ");
-              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null)
+              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+                !fromItem.getAlias().getName().equals(fromItem.getName()))
                 alias = fromItem.getAlias().getName();
               else
                 alias = "c" + (appendOpt.collectionNo++);
@@ -654,11 +664,12 @@ public class ArangoDBStatement implements Statement {
                 sb.append(alias).append("=DOCUMENT(").append(sId).append(")");
               else
                 sb.append(alias).append("=DOCUMENT('").append(getAliasCollection(fromItem.getName())).append("',").append(filterPara).append(")");
-              if (!j.isOuter())
+              if (!j.isOuter() && !j.isInner())
                 sb.append(" FILTER ").append(alias).append(sId != null ? "._id" : "._key");
             } else if (j.isOuter()) {
               sb.append(" LET ");
-              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null) {
+              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+                !fromItem.getAlias().getName().equals(fromItem.getName())) {
                 alias = fromItem.getAlias().getName();
                 appendOpt.sqlAlias = alias;
               } else
@@ -678,7 +689,8 @@ public class ArangoDBStatement implements Statement {
               lstTabAlias.put(fromItem.getName(), alias);
             } else {
               sb.append(" FOR ");
-              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null)
+              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+                !fromItem.getAlias().getName().equals(fromItem.getName()))
                 alias = fromItem.getAlias().getName();
               else
                 alias = "c" + (appendOpt.collectionNo++);
@@ -691,7 +703,8 @@ public class ArangoDBStatement implements Statement {
           }
         } else {
           sb.append(" FOR ");
-          if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null)
+          if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+            !fromItem.getAlias().getName().equals(fromItem.getName()))
             alias = fromItem.getAlias().getName();
           else
             alias = "c" + (appendOpt.collectionNo++);
@@ -721,10 +734,15 @@ public class ArangoDBStatement implements Statement {
     HashMap<String, String> lstColAliasGroup = new HashMap<>();
     if (plain.getGroupBy() != null) {
       sb.append(" COLLECT ");
+      boolean first = true;
       List<Expression> lstGrp = plain.getGroupBy().getGroupByExpressionList().getExpressions();
       for (int g = 0; g < lstGrp.size(); g++) {
-        Expression gExp = lstGrp.get(0);
+        Expression gExp = lstGrp.get(g);
         if (gExp instanceof Column) {
+          if (first)
+            first = false;
+          else
+            sb.append(",");
           sb.append("g").append(g).append("=");
           sb.append(getSqlColumn((Column) gExp, lstTabAlias, dftAlias, appendOpt));
           if (gSb == null)
@@ -1011,6 +1029,9 @@ public class ArangoDBStatement implements Statement {
       return sql;
     } else if (exp instanceof UserVariable) {
       return "@" + ((UserVariable) exp).getName();
+    } else if (exp instanceof Parenthesis) {
+      Parenthesis par = (Parenthesis) exp;
+      return appendExpression(par.getExpression(), lstTabAlias, dftAlias, appendOpt);
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";

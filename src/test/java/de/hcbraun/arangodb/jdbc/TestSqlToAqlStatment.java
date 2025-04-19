@@ -197,4 +197,17 @@ public class TestSqlToAqlStatment {
         "order by Order_customerBP", null).aql);
   }
 
+  @Test
+  public void testSimpleSelectOrderSumPriceGroupByNameAndBP() {
+    assertEquals("FOR c1 IN aOrder LET c2=DOCUMENT('Address',c1.customerAddress) FILTER c1.state=='40' COLLECT g0=c1.customerBP,g1=c2.name1 AGGREGATE ag1=Sum(c1.priceTotal) SORT g0,g1 RETURN {aOrder_customerBP:g0,Address_name1:g1,Sum_aOrder_priceTotal:ag1}",
+      (new ArangoDBStatement(null)).getAQL("select Address.name1 as Address_name1, \n" +
+        "Sum(aOrder.priceTotal) as Sum_aOrder_priceTotal, \n" +
+        "aOrder.customerBP as aOrder_customerBP\n" +
+        "from aOrder aOrder\n" +
+        "inner join Address Address on (aOrder.customerAddress = Address._key)\n" +
+        "where (aOrder.state = '40')\n" +
+        "group by aOrder.customerBP, Address.name1\n" +
+        "order by aOrder_customerBP, Address_name1", null).aql);
+  }
+
 }
