@@ -43,6 +43,8 @@ public class ArangoDBStatement implements Statement {
   private int maxRows = 0;
   private String separatorStructColumn = null;
 
+  private final static List<String> aggregateSqlFunc = Arrays.asList("LEN", "AVG", "COUNT", "MAX", "MIN", "SUM");
+
   private static class AppendOption {
     int aggregateNo = 0, collectionNo = 1;
     StringBuilder aggregate = null;
@@ -641,7 +643,8 @@ public class ArangoDBStatement implements Statement {
                   sId = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
                 else if (et.getRightExpression().toString().equals(sI1))
                   sId = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
-              } if (on instanceof Parenthesis) {
+              }
+              if (on instanceof Parenthesis) {
                 Parenthesis p = (Parenthesis) on;
                 if (p.getExpression() instanceof EqualsTo) {
                   EqualsTo et = (EqualsTo) p.getExpression();
@@ -721,8 +724,11 @@ public class ArangoDBStatement implements Statement {
     HashMap<String, String> lstColAggAlias = new HashMap<>();
     for (SelectItem si : plain.getSelectItems()) {
       if (si.getExpression() instanceof Function) {
-        String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt);
-        lstColAggAlias.put(si.getAlias().getName(), ag);
+        Function func = (Function) si.getExpression();
+        if (aggregateSqlFunc.contains(func.getName())) {
+          String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt);
+          lstColAggAlias.put(si.getAlias().getName(), ag);
+        }
       }
     }
     if (plain.getWhere() != null) {
