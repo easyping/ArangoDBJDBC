@@ -725,7 +725,7 @@ public class ArangoDBStatement implements Statement {
     for (SelectItem si : plain.getSelectItems()) {
       if (si.getExpression() instanceof Function) {
         Function func = (Function) si.getExpression();
-        if (aggregateSqlFunc.contains(func.getName())) {
+        if (aggregateSqlFunc.contains(func.getName().toUpperCase())) {
           String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt);
           lstColAggAlias.put(si.getAlias().getName(), ag);
         }
