@@ -219,4 +219,11 @@ public class TestSqlToAqlStatment {
         "where (aOrder.state = '40')", null).aql);
   }
 
+  @Test
+  public void testSimpleSelectWithFunction() {
+    assertEquals("FOR c1 IN aOrder RETURN {lowerDesc:LOWER(c1.description),lenOfDesc:LENGTH(c1.description)}",
+      (new ArangoDBStatement(null)).getAQL("select Lower(aOrder.description) as lowerDesc, len(aOrder.description) as lenOfDesc \n" +
+        "from aOrder aOrder", null).aql);
+  }
+
 }
