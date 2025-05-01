@@ -1017,8 +1017,28 @@ public class ArangoDBStatement implements Statement {
     } else if (exp instanceof Between) {
       Between between = (Between) exp;
       String col = appendExpression(between.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup);
-      return (between.isNot() ? "!(" : "(") + col + ">=" + appendExpression(between.getBetweenExpressionStart(), lstTabAlias, dftAlias, appendOpt, withGroup) + " && " +
-        col + "<=" + appendExpression(between.getBetweenExpressionEnd(), lstTabAlias, dftAlias, appendOpt, withGroup) + ")";
+      String from = appendExpression(between.getBetweenExpressionStart(), lstTabAlias, dftAlias, appendOpt, withGroup);
+      String to = appendExpression(between.getBetweenExpressionEnd(), lstTabAlias, dftAlias, appendOpt, withGroup);
+      // If the comparison is designed exclusively for one day, then set the time to the end of the day.
+      if (from.equals(to) && between.getBetweenExpressionEnd() instanceof Function &&
+        ((Function) between.getBetweenExpressionEnd()).getName().equalsIgnoreCase("TIMESTAMP") &&
+        !((Function) between.getBetweenExpressionEnd()).getParameters().isEmpty() &&
+        ((Function) between.getBetweenExpressionEnd()).getParameters().get(0) instanceof StringValue) {
+        Function func = (Function) between.getBetweenExpressionEnd();
+        String dValue = ((StringValue) func.getParameters().get(0)).getValue();
+        String tValue = func.getParameters().size() > 1 ? ((StringValue) func.getParameters().get(1)).getValue() : null;
+        if (dValue.contains(" ")) {
+          String[] dt = dValue.split(" ");
+          dValue = dt[0];
+          tValue = dt[1];
+        }
+        if (("00:00:00").equals(tValue)) {
+          tValue = "23:59:59";
+          to = convertSQLDateTime(dValue, tValue);
+          to = to.substring(0, to.indexOf(".")) + ".999Z'";
+        }
+      }
+      return (between.isNot() ? "!(" : "(") + col + ">=" + from + " && " + col + "<=" + to + ")";
     } else if (exp instanceof InExpression) {
       InExpression in = (InExpression) exp;
       String inValue;
@@ -1071,6 +1091,17 @@ public class ArangoDBStatement implements Statement {
     } else if (exp instanceof Function) {
       Function func = (Function) exp;
       String funcName = func.getName().toUpperCase();
+      // If the Timestamp function is called with a parameter, adjust this accordingly for the AQL date.
+      if ("TIMESTAMP".equals(funcName) && !func.getParameters().isEmpty() && func.getParameters().get(0) instanceof StringValue) {
+        String dValue = ((StringValue) func.getParameters().get(0)).getValue();
+        String tValue = func.getParameters().size() > 1 ? ((StringValue) func.getParameters().get(1)).getValue() : null;
+        if (tValue == null) {
+          String[] dt = dValue.split(" ");
+          dValue = dt[0];
+          tValue = dt[1];
+        }
+        return convertSQLDateTime(dValue, tValue);
+      }
       if (aggregateSqlFunc.contains(funcName) && (!"LEN".equals(funcName) || withGroup)) {
         String ag = "ag" + (++appendOpt.aggregateNo);
         if (appendOpt.aggregate == null)
@@ -1115,6 +1146,18 @@ public class ArangoDBStatement implements Statement {
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";
+  }
+
+  private String convertSQLDateTime(String dValue, String tValue) {
+    String[] dV = dValue.split("-");
+    String[] tV = tValue.split(":");
+    Calendar cal = Calendar.getInstance();
+    cal.set(Integer.parseInt(dV[0]), Integer.parseInt(dV[1]) - 1, Integer.parseInt(dV[2]), Integer.parseInt(tV[0]), Integer.parseInt(tV[1]), Integer.parseInt(tV[2]));
+    Calendar utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+    utcCal.setTimeInMillis(cal.getTimeInMillis());
+    String d = utcCal.getTime().toInstant().toString();
+    d = d.contains(".") ? d.substring(0, d.indexOf(".")) + ".000Z" : d.substring(0, d.length() - 1) + ".000Z";
+    return "'" + d + "'";
   }
 
   private String getSqlColumn(Column col, HashMap<String, String> lstTabAlias, String dftAlias, AppendOption appendOpt) {

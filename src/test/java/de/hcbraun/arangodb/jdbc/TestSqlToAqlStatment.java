@@ -226,4 +226,13 @@ public class TestSqlToAqlStatment {
         "from aOrder aOrder", null).aql);
   }
 
+  @Test
+  public void testSimpleSelectWithTimestampFunction() {
+    assertEquals("FOR c1 IN aOrder LET c2=DOCUMENT('Address',c1.customerAddress) FILTER (c1.orderDate>='2022-04-30T22:00:00.000Z' && c1.orderDate<='2022-05-01T21:59:59.999Z') && c1.state=='40' COLLECT g0=c1.customerBP,g1=c2.name1 AGGREGATE ag1=Sum(c1.priceTotal) SORT g0,g1 RETURN {aOrder_customerBP:g0,Address_name1:g1,Sum_aOrder_priceTotal:ag1}",
+      (new ArangoDBStatement(null)).getAQL("select Address.name1 as Address_name1, Sum(aOrder.priceTotal) as Sum_aOrder_priceTotal, aOrder.customerBP as aOrder_customerBP " +
+        "from aOrder aOrder inner join Address Address on (aOrder.customerAddress = Address._key) " +
+        "where ((aOrder.orderDate between timestamp('2022-05-01 00:00:00') and timestamp('2022-05-01 00:00:00')) and aOrder.state = '40') " +
+        "group by aOrder.customerBP, Address.name1 order by aOrder_customerBP, Address_name1", null).aql);
+  }
+
 }
