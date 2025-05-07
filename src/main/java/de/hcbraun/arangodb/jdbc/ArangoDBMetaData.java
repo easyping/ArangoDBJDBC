@@ -800,11 +800,11 @@ public class ArangoDBMetaData implements DatabaseMetaData {
           cols = new ArrayList<>();
           while (cursor.hasNext()) {
             BaseDocument doc = cursor.next();
-            Map<String, Object> schema = (Map) doc.getAttribute("schema");
-            if (schema != null) {
-              Map<String, Object> rule = (Map) schema.get("rule");
-              Map<String, Object> props = (Map) rule.get("properties");
-              addColumns(props, cols, 0, con.getCollectionAlias((String) doc.getAttribute("name")), "", doc);
+            Map<String, Object> sa = (Map) doc.getAttribute("schema");
+            if (sa != null) {
+              String tableName = (String) doc.getAttribute("name");
+              CollectionSchema cSchema = con.getStructureManager().getSchema(tableName, new BaseDocument(sa));
+              addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableName, schema);
             }
           }
         }
@@ -812,27 +812,19 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         e.printStackTrace();
       }
     } else {
-      try {
-        ArangoCursor<BaseDocument> cursor = con.getDatabase().query("RETURN SCHEMA_GET('" + con.getAliasCollection(tableNamePattern) + "')", BaseDocument.class);
-        if (cursor != null) {
-          BaseDocument doc = cursor.next();
-          Map<String, Object> rule = (Map) doc.getAttribute("rule");
-          Map<String, Object> props = (Map) rule.get("properties");
-
-          cols = new ArrayList<>();
-          addColumns(props, cols, 0, tableNamePattern, "", doc);
-          if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
-            ArrayList<HashMap<String, Object>> nCols = new ArrayList<>();
-            for (HashMap<String, Object> row : cols) {
-              String colName = (String) row.get("COLUMN_NAME");
-              if (colName.matches(columnNamePattern))
-                nCols.add(row);
-            }
-            cols = nCols;
+      CollectionSchema cSchema = con.getStructureManager().getSchema(tableNamePattern);
+      cols = new ArrayList<>();
+      if (cSchema != null) {
+        addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableNamePattern, schema);
+        if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
+          ArrayList<HashMap<String, Object>> nCols = new ArrayList<>();
+          for (HashMap<String, Object> row : cols) {
+            String colName = (String) row.get("COLUMN_NAME");
+            if (colName.matches(columnNamePattern))
+              nCols.add(row);
           }
+          cols = nCols;
         }
-      } catch (ArangoDBException e) {
-        e.printStackTrace();
       }
     }
     if (cols != null) {
@@ -844,151 +836,63 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     return null;
   }
 
-  private int addColumns(Map<String, Object> props, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String prefix, BaseDocument docCompete) {
-    for (String prop : props.keySet()) {
-      Map m = (Map) props.get(prop);
-      String dt = (String) m.get("type");
-      String ref = (String) m.get("$ref");
-      String df = (String) m.get("format");
-      List lstOneOf = (List) m.get("oneOf");
-      List enumType = (List) m.get("enum");
-      Number multipleOf = (Number) m.get("multipleOf");
-      Object uProp = m.get("properties");
-      // Schema reference declared?
-      if (ref != null) {
-        if (ref.startsWith("#/"))
-          ref = ref.substring(2);
-        String[] refs = ref.split("/");
-        if (docCompete != null) {
-          Map<String, Object> rule = (Map) docCompete.getAttribute("rule");
-          if (rule != null) {
-            Map<String, Object> defs = (Map) rule.get(refs[0]);
-            if (defs != null) {
-              Map<String, Object> def = (Map) defs.get(refs[1]);
-              if (def != null) {
-                dt = "object";
-                uProp = def.get("properties");
+  private int addSchemaColumns(CollectionSchema cSchema, List<SchemaNode> properties, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema) {
+    for (SchemaNode node : properties) {
+      if (node.getDataType().get(0) == Types.STRUCT &&
+        (node.getProperties() != null && !node.getProperties().isEmpty()) || (node.getReferences() != null && !node.getReferences().isEmpty())) {
+        if (node.getReferences() != null && !node.getReferences().isEmpty()) {
+          for (String ref : node.getReferences()) {
+            SchemaReference sRef = cSchema.getReferences() != null ? cSchema.getReferences().get(ref) : null;
+            if (sRef != null)
+              colPos = addSchemaColumns(cSchema, sRef.getProperties(), prefix + node.getName() + separatorStructColumn, cols, colPos, tableName, schema);
+            else {
+              SchemaDatatype sDt = cSchema.getDatatypes() != null ? cSchema.getDatatypes().get(ref) : null;
+              if (sDt != null) {
+                colPos = addSchemaRow(node, prefix, cols, colPos, tableName, schema, sDt.getType());
               }
             }
           }
-        }
-      }
-      if ("object".equalsIgnoreCase(dt) && uProp != null) {
-        colPos = addColumns((Map<String, Object>) uProp, cols, colPos, tableName, prefix + prop + separatorStructColumn, docCompete);
-      } else {
-        int dataType = Types.NULL;
-        int nullable = columnNullableUnknown;
-        String remarks = null;
-        if (lstOneOf != null && !lstOneOf.isEmpty()) {
-          for (Object o : lstOneOf) {
-            Map<String, Object> moo = (Map) o;
-            String mDt = (String) moo.get("type");
-            String mRef = (String) moo.get("$ref");
-            String mDf = (String) moo.get("format");
-            Number mMultipleOf = (Number) moo.get("multipleOf");
-            if ("null".equalsIgnoreCase(mDt)) {
-              nullable = columnNullable;
-            } else {
-              if ("object".equalsIgnoreCase(mDt)) {
-                Object muProp = moo.get("properties");
-                if (mRef != null) {
-                  if (mRef.startsWith("#/"))
-                    mRef = mRef.substring(2);
-                  String[] refs = mRef.split("/");
-                  if (docCompete != null) {
-                    Map<String, Object> rule = (Map) docCompete.getAttribute("rule");
-                    Map<String, Object> defs = (Map) rule.get(refs[0]);
-                    if (defs != null) {
-                      Map<String, Object> def = (Map) defs.get(refs[1]);
-                      if (def != null) {
-                        muProp = def.get("properties");
-                      }
-                    }
-                  }
-                }
-                if (muProp != null)
-                  colPos = addColumns((Map<String, Object>) muProp, cols, colPos, tableName, prefix + prop + separatorStructColumn, docCompete);
-              } else {
-                int t = getColumnDataType(mDt, mDf, mMultipleOf);
-                if (dataType == Types.NULL)
-                  dataType = t;
-                else if (t == Types.VARCHAR && dataType != Types.ARRAY)
-                  dataType = Types.VARCHAR;
-              }
-            }
-          }
-        } else if (enumType != null && !enumType.isEmpty()) {
-          for (Object o : enumType) {
-            if ("null".equalsIgnoreCase(o.toString())) {
-              nullable = columnNullable;
-            } else {
-              if ((dataType == Types.NULL || dataType == Types.BOOLEAN) && o instanceof Number) {
-                dataType = Types.DOUBLE;
-              } else if (o instanceof String) {
-                dataType = Types.VARCHAR;
-              } else if (dataType == Types.NULL && o instanceof Boolean) {
-                dataType = Types.BOOLEAN;
-              }
-            }
-          }
-          remarks = enumType.toString();
         } else
-          dataType = getColumnDataType(dt, df, multipleOf);
-
-        colPos++;
-        HashMap<String, Object> row = new HashMap<>();
-        row.put("TABLE_CAT", null);
-        row.put("TABLE_SCHEM", schema);
-        row.put("TABLE_NAME", tableName);
-        row.put("COLUMN_NAME", prefix + prop);
-        row.put("DATA_TYPE", dataType);
-        row.put("TYPE_NAME", "");
-        row.put("COLUMN_SIZE", 0);
-        row.put("BUFFER_LENGTH", null);
-        row.put("DECIMAL_DIGITS", 0);
-        row.put("NUM_PREC_RADIX", 10);
-        row.put("NULLABLE", nullable);
-        row.put("REMARKS", remarks);
-        row.put("COLUMN_DEF", null);
-        row.put("SQL_DATA_TYPE", 0);
-        row.put("SQL_DATETIME_SUB", 0);
-        row.put("CHAR_OCTET_LENGTH", 0);
-        row.put("ORDINAL_POSITION", colPos);
-        row.put("IS_NULLABLE", "");
-        row.put("SCOPE_CATALOG", null);
-        row.put("SCOPE_SCHEMA", null);
-        row.put("SCOPE_TABLE", null);
-        row.put("SOURCE_DATA_TYPE", null);
-        row.put("IS_AUTOINCREMENT", "");
-        row.put("IS_GENERATEDCOLUMN", "");
-        cols.add(row);
+          colPos = addSchemaColumns(cSchema, node.getProperties(), prefix + node.getName() + separatorStructColumn, cols, colPos, tableName, schema);
+      } else {
+        colPos = addSchemaRow(node, prefix, cols, colPos, tableName, schema, node.getDataType().get(0));
       }
     }
-
     return colPos;
   }
 
-  private int getColumnDataType(String dt, String df, Number multipleOf) {
-    if ("string".equalsIgnoreCase(dt)) {
-      if ("YYYY-MM-DDTHH:MM:SSZ".equalsIgnoreCase(df) || "yyyy-MM-ddTHH:mm:ss.SSSZ".equalsIgnoreCase(df))
-        return Types.TIMESTAMP;
-      else if ("YYYY-MM-DD".equalsIgnoreCase(df))
-        return Types.DATE;
-      else if ("HH:MM".equalsIgnoreCase(df) || "HH:MM:SS".equalsIgnoreCase(df) || "HH:MM:SS.SSS".equalsIgnoreCase(df))
-        return Types.TIME;
-    } else if ("integer".equalsIgnoreCase(dt))
-      return Types.INTEGER;
-    else if ("number".equalsIgnoreCase(dt)) {
-      if (multipleOf != null) {
-        if (multipleOf instanceof Integer || multipleOf.doubleValue() % 1 == 0)
-          return Types.INTEGER;
-      }
-      return Types.DOUBLE;
-    } else if ("boolean".equalsIgnoreCase(dt))
-      return Types.BOOLEAN;
-    else if ("array".equalsIgnoreCase(dt))
-      return Types.ARRAY;
-    return Types.VARCHAR;
+  private int addSchemaRow(SchemaNode node, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema, int dataType) {
+    String colName = prefix + node.getName();
+    if (cols.stream().noneMatch(c -> c.get("COLUMN_NAME").equals(colName))) {
+      ++colPos;
+      HashMap<String, Object> row = new HashMap<>();
+      row.put("TABLE_CAT", null);
+      row.put("TABLE_SCHEM", schema);
+      row.put("TABLE_NAME", tableName);
+      row.put("COLUMN_NAME", colName);
+      row.put("DATA_TYPE", dataType);
+      row.put("TYPE_NAME", "");
+      row.put("COLUMN_SIZE", 0);
+      row.put("BUFFER_LENGTH", null);
+      row.put("DECIMAL_DIGITS", 0);
+      row.put("NUM_PREC_RADIX", 10);
+      row.put("NULLABLE", node.isNullable() ? columnNullable : columnNullableUnknown);
+      row.put("REMARKS", node.getEnumValues() != null ? node.getEnumValues().toString() : "");
+      row.put("COLUMN_DEF", null);
+      row.put("SQL_DATA_TYPE", 0);
+      row.put("SQL_DATETIME_SUB", 0);
+      row.put("CHAR_OCTET_LENGTH", 0);
+      row.put("ORDINAL_POSITION", colPos);
+      row.put("IS_NULLABLE", "");
+      row.put("SCOPE_CATALOG", null);
+      row.put("SCOPE_SCHEMA", null);
+      row.put("SCOPE_TABLE", null);
+      row.put("SOURCE_DATA_TYPE", null);
+      row.put("IS_AUTOINCREMENT", "");
+      row.put("IS_GENERATEDCOLUMN", "");
+      cols.add(row);
+    }
+    return colPos;
   }
 
   @Override

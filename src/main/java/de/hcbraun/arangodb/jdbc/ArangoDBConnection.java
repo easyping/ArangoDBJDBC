@@ -22,6 +22,7 @@ public class ArangoDBConnection implements Connection {
   private String separatorStructColumn = null;
   private HashMap<String, String> lstCollectionAlias = new HashMap<>();
   private HashMap<String, String> lstAliasCollection = new HashMap<>();
+  private StructureManager structureManager = null;
 
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
@@ -67,6 +68,7 @@ public class ArangoDBConnection implements Connection {
 //    System.out.println("Database-Version: " + database.getVersion().getVersion());
     if (separatorStructColumn != null)
       logger.info("Connection use separatorStructColumn: " + separatorStructColumn);
+    structureManager = new StructureManager(this);
   }
 
   protected String getUserName() {
@@ -442,5 +444,9 @@ public class ArangoDBConnection implements Connection {
   protected String getAliasCollection(String alias) {
     String c = lstAliasCollection.get(alias);
     return c != null ? c : alias;
+  }
+
+  protected StructureManager getStructureManager() {
+    return structureManager;
   }
 }
