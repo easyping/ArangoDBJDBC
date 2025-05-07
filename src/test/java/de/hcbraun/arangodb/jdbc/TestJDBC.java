@@ -175,4 +175,26 @@ public class TestJDBC {
     }
   }
 
+  @Test
+  public void testMetaData() {
+    try {
+      Connection con = getConnection();
+      DatabaseMetaData dmd = con.getMetaData();
+      ResultSet rs = dmd.getTables(null, null, null, null);
+      rs.next();
+      assertEquals("Country", rs.getString("TABLE_NAME"));
+      rs.close();
+      rs = dmd.getColumns(null, null, "Country", null);
+      rs.next();
+      assertEquals("_key", rs.getString("COLUMN_NAME"));
+      rs.close();
+      rs = dmd.getColumns(null, null, "Country", "eu");
+      rs.next();
+      assertEquals("eu", rs.getString("COLUMN_NAME"));
+      rs.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
 }
