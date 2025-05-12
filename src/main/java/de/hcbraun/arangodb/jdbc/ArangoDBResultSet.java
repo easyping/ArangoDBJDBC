@@ -434,8 +434,8 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(int i) throws SQLException {
-    logger.debug("getBigDecimal - index");
-    return null;
+    logger.debug("getBigDecimal - index: " + i);
+    return getBigDecimal(lstCols.get(i - 1).name);
   }
 
   @Override
