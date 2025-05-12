@@ -756,15 +756,21 @@ public class ArangoDBStatement implements Statement {
       collect(Collectors.toMap(si -> si.getExpression().toString(), si -> si.getAlias().getName(), (a, b) -> b, HashMap::new));
     // List of defined column as function with alias. for collect aggregate
     HashMap<String, String> lstColAggAlias = new HashMap<>();
+    ArrayList<ColInfo> lstAggCols = new ArrayList<>();
     for (SelectItem si : plain.getSelectItems()) {
       if (si.getExpression() instanceof Function) {
         Function func = (Function) si.getExpression();
         String fName = func.getName().toUpperCase();
         if (aggregateSqlFunc.contains(fName) && (!fName.equals("LEN") || plain.getGroupBy() != null)) {
           String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null);
-          lstColAggAlias.put(si.getAlias().getName(), ag);
+          lstColAggAlias.put(si.getAlias() != null ? si.getAlias().getName() : fName, ag);
+          if ("COUNT".equals(fName))
+            lstAggCols.add(new ColInfo(si.getAlias() != null ? si.getAlias().getName() : fName, "Integer", Types.INTEGER, Integer.class.toString()));
+          else
+            lstAggCols.add(new ColInfo(si.getAlias().getName(), "Double", Types.DOUBLE, Double.class.toString()));
         }
-      }
+      } else if (si.getExpression() instanceof Column)
+        lstAggCols.add(new ColInfo(((Column) si.getExpression()).getColumnName(), "String", Types.VARCHAR, String.class.toString()));
     }
     if (plain.getWhere() != null) {
       sb.append(" FILTER ");
@@ -780,19 +786,45 @@ public class ArangoDBStatement implements Statement {
       for (int g = 0; g < lstGrp.size(); g++) {
         Expression gExp = lstGrp.get(g);
         if (gExp instanceof Column) {
+          Column c = (Column) gExp;
           if (first)
             first = false;
           else
             sb.append(",");
           sb.append("g").append(g).append("=");
-          sb.append(getSqlColumn((Column) gExp, lstTabAlias, dftAlias, appendOpt));
+          sb.append(getSqlColumn(c, lstTabAlias, dftAlias, appendOpt));
+          ColInfo ci = null;
+          for (ColInfo cI : lstAggCols) {
+            if (cI.getName().equals(c.getColumnName())) {
+              ci = cI;
+              break;
+            }
+          }
+          if (connection != null && ci != null) {
+            StructureManager sm = connection.getStructureManager();
+            if (sm != null) {
+              CollectionSchema colSchema = sm.getSchema(c.getTable() != null ? c.getTable().getName() : dftTabName);
+              if (colSchema != null) {
+                for (SchemaNode sn : colSchema.getProperties()) {
+                  if (sn.getName().equals(c.getColumnName())) {
+                    if (sn.getDataType().get(0) != Types.VARCHAR) {
+                      ci.setType(sn.getDataType().get(0));
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+          }
           if (gSb == null)
             gSb = new StringBuilder("{");
           else
             gSb.append(",");
           lstColAliasGroup.put(gExp.toString(), "g" + g);
           if (lstColAlias.containsKey(gExp.toString())) {
-            gSb.append(lstColAlias.get(gExp.toString()));
+            String a = lstColAlias.get(gExp.toString());
+            gSb.append(a);
+            ci.setName(a);
             // add alias column name for group/collect
             if (lstColAliasGroup.containsKey(gExp.toString()))
               lstColAliasGroup.put(lstColAlias.get(gExp.toString()), "g" + g);
@@ -821,6 +853,7 @@ public class ArangoDBStatement implements Statement {
           sb.append(" FILTER ").append(agFilter);
         appendOpt.aggregate = null;
       }
+      lstRCols.addAll(lstAggCols);
     } else if (appendOpt.aggregate != null) {
       sb.append(" COLLECT AGGREGATE ").append(appendOpt.aggregate);
       appendOpt.aggregate = null;
@@ -835,6 +868,7 @@ public class ArangoDBStatement implements Statement {
       }
       if (gSb != null)
         gSb.append("}");
+      lstRCols.addAll(lstAggCols);
     }
 
     if (plain.getOrderByElements() != null) {
@@ -857,7 +891,7 @@ public class ArangoDBStatement implements Statement {
       sb.append(" LIMIT ").append(maxRows);
 
     // get schema information from all collections
-    HashMap<String, HashMap<String, ColInfo>> lstColsDesc = readCollectionSchema(lstTabAlias.keySet());
+    HashMap<String, HashMap<String, ColInfo>> lstColsDesc = gSb == null ? readCollectionSchema(lstTabAlias.keySet()) : null;
 
     sb.append(" RETURN ");
     if (gSb != null)
@@ -1107,7 +1141,10 @@ public class ArangoDBStatement implements Statement {
           appendOpt.aggregate = new StringBuilder();
         else
           appendOpt.aggregate.append(",");
-        appendOpt.aggregate.append(ag).append("=").append(func.getName()).append("(").append(appendExpression(func.getParameters().getExpressions().get(0), lstTabAlias, dftAlias, appendOpt, withGroup)).append(")");
+        String expFunc = "";
+        if (func.getParameters() != null && !func.getParameters().isEmpty() && !(func.getParameters().get(0) instanceof AllColumns))
+          expFunc = appendExpression(func.getParameters().get(0), lstTabAlias, dftAlias, appendOpt, withGroup);
+        appendOpt.aggregate.append(ag).append("=").append(func.getName()).append("(").append(expFunc).append(")");
         return ag;
       }
       AQLFunction aqlFunc = mapSQLFuncToAQLFunc.get(funcName);

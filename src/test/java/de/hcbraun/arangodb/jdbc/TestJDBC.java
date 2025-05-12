@@ -197,4 +197,25 @@ public class TestJDBC {
     }
   }
 
+  @Test
+  public void testSQLQueryGroupResult() {
+    try {
+      Connection con = getConnection();
+      Statement stat = con.createStatement();
+      ResultSet rs = stat.executeQuery("SELECT eu,count(*) FROM Country GROUP BY eu");
+      if (rs != null) {
+        if (rs.next()) {
+          assertEquals("eu", rs.getMetaData().getColumnName(1));
+          assertEquals(Types.BOOLEAN, rs.getMetaData().getColumnType(1));
+          assertEquals(Types.INTEGER, rs.getMetaData().getColumnType(2));
+        }
+        rs.close();
+      }
+      con.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+
 }
