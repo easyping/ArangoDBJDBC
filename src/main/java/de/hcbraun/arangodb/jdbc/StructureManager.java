@@ -69,23 +69,23 @@ public class StructureManager {
     // all additional definition used by $ref
     if (defs != null) {
       HashMap<String, SchemaReference> refs = new HashMap<>();
-      defs.forEach((k, v) -> {
+      for (Map.Entry<String, Object> entry : defs.entrySet()) {
+        String k = entry.getKey();
+        Object v = entry.getValue();
         Map<String, Object> defProps = (Map) ((Map<String, Object>) v).get("properties");
         if (defProps != null)
           refs.put(k, new SchemaReference(k, createListOfNodes(defProps)));
         else {
-          Map<String, Object> defValue = (Map) ((Map<String, Object>) v).get("value");
-          if (defValue != null) {
-            String mDt = (String) defValue.get("type");
-            String mDf = (String) defValue.get("format");
-            Number mMultipleOf = (Number) defValue.get("multipleOf");
-            SchemaDatatype dt = new SchemaDatatype(k, findDataType(mDt, mDf, mMultipleOf));
-            if (schema.getDatatypes() == null)
-              schema.setDatatypes(new HashMap<>());
-            schema.getDatatypes().put(k, dt);
-          }
+          Map<String, Object> defValue = (Map) v;
+          String mDt = (String) defValue.get("type");
+          String mDf = (String) defValue.get("format");
+          Number mMultipleOf = (Number) defValue.get("multipleOf");
+          SchemaDatatype dt = new SchemaDatatype(k, findDataType(mDt, mDf, mMultipleOf));
+          if (schema.getDatatypes() == null)
+            schema.setDatatypes(new HashMap<>());
+          schema.getDatatypes().put(k, dt);
         }
-      });
+      }
     }
     if (props != null) {
       schema.setProperties(createListOfNodes(props));
@@ -97,7 +97,9 @@ public class StructureManager {
 
   private List<SchemaNode> createListOfNodes(Map<String, Object> props) {
     List<SchemaNode> nodes = new ArrayList<>();
-    props.forEach((k, v) -> {
+    for (Map.Entry<String, Object> entry : props.entrySet()) {
+      String k = entry.getKey();
+      Object v = entry.getValue();
       SchemaNode node = new SchemaNode(k);
       Map<String, Object> m = (Map) v;
       String dt = (String) m.get("type");
@@ -118,7 +120,7 @@ public class StructureManager {
       } else if (lstOneOf != null && lstOneOf.size() > 0) {
         ArrayList<Integer> dtList = new ArrayList<>();
         ArrayList<String> refList = new ArrayList<>();
-        lstOneOf.forEach(o -> {
+        for (Object o : lstOneOf) {
           Map<String, Object> moo = (Map) o;
           String mDt = (String) moo.get("type");
           String mRef = (String) moo.get("$ref");
@@ -132,7 +134,7 @@ public class StructureManager {
           } else {
             dtList.add(findDataType(mDt, mDf, mMultipleOf));
           }
-        });
+        }
         if (!dtList.isEmpty())
           node.setDataType(dtList);
         if (!refList.isEmpty())
@@ -165,7 +167,7 @@ public class StructureManager {
         node.setProperties(createListOfNodes((Map<String, Object>) uProp));
       }
       nodes.add(node);
-    });
+    }
     return nodes;
   }
 
@@ -190,6 +192,52 @@ public class StructureManager {
     else if ("array".equalsIgnoreCase(dt))
       return Types.ARRAY;
     return Types.VARCHAR;
+  }
+
+  public HashMap<String, ColInfo> getColInfo(String collection) {
+    HashMap<String, ColInfo> cols = new HashMap<>();
+
+    CollectionSchema sm = getSchema(collection);
+    if (sm != null) {
+      for (SchemaNode sn : sm.getProperties()) {
+        if (sn.getReferences() != null && !sn.getReferences().isEmpty()) {
+          for (String ref : sn.getReferences()) {
+            addRefCollInfo(sm, ref, sn.getName() + ".", cols);
+          }
+        } else {
+          ColInfo ci = new ColInfo(sn.getName(), "NVARCHAR", sn.getDataType().get(0), String.class.getName());
+          ci.tabName = sm.getAliasName();
+          cols.put(ci.getName(), ci);
+        }
+      }
+    }
+    return cols;
+  }
+
+  private void addRefCollInfo(CollectionSchema sm, String ref, String prefix, HashMap<String, ColInfo> cols) {
+    SchemaReference sr = sm.getReferences() != null ? sm.getReferences().get(ref) : null;
+    if (sr != null) {
+      for (SchemaNode sn : sr.getProperties()) {
+        if (sn.getReferences() != null && !sn.getReferences().isEmpty()) {
+          for (String r : sn.getReferences()) {
+            addRefCollInfo(sm, r, prefix + sn.getName() + ".", cols);
+          }
+        } else {
+          String name = prefix + sn.getName();
+          ColInfo ci = new ColInfo(name, "NVARCHAR", sn.getDataType().get(0), String.class.getName());
+          ci.tabName = sm.getAliasName();
+          cols.put(name, ci);
+        }
+      }
+    } else {
+      SchemaDatatype dt = sm.getDatatypes() != null ? sm.getDatatypes().get(ref) : null;
+      if (dt != null) {
+        String name = prefix.substring(0, prefix.length() - 1);
+        ColInfo ci = new ColInfo(name, "NVARCHAR", dt.getType(), String.class.getName());
+        ci.tabName = sm.getAliasName();
+        cols.put(name, ci);
+      }
+    }
   }
 
 }

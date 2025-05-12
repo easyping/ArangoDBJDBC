@@ -1199,67 +1199,11 @@ public class ArangoDBStatement implements Statement {
 
   private HashMap<String, HashMap<String, ColInfo>> readCollectionSchema(Collection<String> collections) {
     HashMap<String, HashMap<String, ColInfo>> lstColsDesc = new HashMap<>();
-    if (!collections.isEmpty() && database != null) {
-      HashMap<String, Object> bVars = new HashMap<>();
-      Collection<String> lstCol = new ArrayList<>();
-      for (String col : collections) {
-        lstCol.add(getAliasCollection(col));
-      }
-      bVars.put("cols", lstCol);
-      ArangoCursor<BaseDocument> cursor = database.query("FOR c IN @cols RETURN {name: c, schema: SCHEMA_GET(c)}", BaseDocument.class, bVars);
-      if (cursor != null) {
-        while (cursor.hasNext()) {
-          BaseDocument doc = cursor.next();
-          Map<String, Object> schema = (Map) doc.getAttribute("schema");
-          if (schema != null) {
-            Map<String, Object> rule = (Map) schema.get("rule");
-            Map<String, Object> props = (Map) rule.get("properties");
-            HashMap<String, ColInfo> lstCols = new HashMap<>();
-            addColumns(props, lstCols, "", (String) doc.getAttribute("name"));
-            lstColsDesc.put((String) doc.getAttribute("name"), lstCols);
-          }
-        }
-      }
-    }
+    StructureManager sm = connection.getStructureManager();
+    collections.forEach(col -> {
+      lstColsDesc.put(col, sm.getColInfo(col));
+    });
     return lstColsDesc;
-  }
-
-  private void addColumns(Map<String, Object> props, HashMap<String, ColInfo> cols, String prefix, String tabName) {
-    for (String prop : props.keySet()) {
-      Map<String, Object> m = (Map<String, Object>) props.get(prop);
-      String dt = (String) m.get("type");
-      String df = (String) m.get("format");
-      Object uProp = m.get("properties");
-
-      if ("object".equalsIgnoreCase(dt) && uProp != null) {
-        addColumns((Map<String, Object>) uProp, cols, prefix + prop + ".", tabName);
-      } else {
-        int dataType = Types.VARCHAR;
-        String typeName = "NVARCHAR";
-        String className = String.class.getName();
-        if ("string".equalsIgnoreCase(dt)) {
-          if ("YYYY-MM-DDTHH:MM:SSZ".equalsIgnoreCase(df) || "'yyyy-MM-ddTHH:mm:ss.SSSZ'".equalsIgnoreCase(df)) {
-            dataType = Types.TIMESTAMP;
-            typeName = "NVARCHAR";
-            className = String.class.getName();
-          } else if ("YYYY-MM-DD".equalsIgnoreCase(df))
-            dataType = Types.DATE;
-          else if ("HH:MM".equalsIgnoreCase(df) || "HH:MM:SS".equalsIgnoreCase(df) || "HH:MM:SS.SSS".equalsIgnoreCase(df))
-            dataType = Types.TIME;
-        } else if ("integer".equalsIgnoreCase(dt))
-          dataType = Types.INTEGER;
-        else if ("number".equalsIgnoreCase(dt))
-          dataType = Types.DOUBLE;
-        else if ("boolean".equalsIgnoreCase(dt))
-          dataType = Types.BOOLEAN;
-        else if ("array".equalsIgnoreCase(dt))
-          dataType = Types.ARRAY;
-
-        ColInfo colI = new ColInfo(prefix + prop, typeName, dataType, className);
-        colI.tabName = tabName;
-        cols.put(prefix + prop, colI);
-      }
-    }
   }
 
   protected String getAliasCollection(String alias) {
