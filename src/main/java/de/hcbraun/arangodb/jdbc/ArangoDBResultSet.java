@@ -95,7 +95,7 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public boolean getBoolean(int i) throws SQLException {
-    logger.debug("getBoolean - index");
+    logger.debug("getBoolean - index: " + i);
     wasNull = false;
     return lstCols != null && getBoolean(lstCols.get(i - 1).name);
   }
@@ -108,42 +108,42 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public short getShort(int i) throws SQLException {
-    logger.debug("getShort - index");
+    logger.debug("getShort - index: " + i);
     wasNull = false;
     return lstCols != null ? getShort(lstCols.get(i - 1).name) : 0;
   }
 
   @Override
   public int getInt(int i) throws SQLException {
-    logger.debug("getInt - index");
+    logger.debug("getInt - index: " + i);
     wasNull = false;
     return lstCols != null ? getInt(lstCols.get(i - 1).name) : 0;
   }
 
   @Override
   public long getLong(int i) throws SQLException {
-    logger.debug("getLong - index");
+    logger.debug("getLong - index: " + i);
     wasNull = false;
     return lstCols != null ? getLong(lstCols.get(i - 1).name) : 0;
   }
 
   @Override
   public float getFloat(int i) throws SQLException {
-    logger.debug("getFloat - index");
+    logger.debug("getFloat - index: " + i);
     wasNull = false;
     return lstCols != null ? getFloat(lstCols.get(i - 1).name) : 0;
   }
 
   @Override
   public double getDouble(int i) throws SQLException {
-    logger.debug("getDouble - index");
+    logger.debug("getDouble - index: " + i);
     wasNull = false;
     return lstCols != null ? getDouble(lstCols.get(i - 1).name) : 0;
   }
 
   @Override
   public BigDecimal getBigDecimal(int i, int i1) throws SQLException {
-    logger.debug("getBigDecimal - index/scale");
+    logger.debug("getBigDecimal - index/scale: " + i);
     wasNull = false;
     return lstCols != null ? getBigDecimal(lstCols.get(i - 1).name) : null;
   }
@@ -157,21 +157,21 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public Date getDate(int i) throws SQLException {
-    logger.debug("getDate - index");
+    logger.debug("getDate - index: " + i);
     wasNull = false;
     return lstCols != null ? getDate(lstCols.get(i - 1).name) : null;
   }
 
   @Override
   public Time getTime(int i) throws SQLException {
-    logger.debug("getTime - index");
+    logger.debug("getTime - index: " + i);
     wasNull = false;
     return lstCols != null ? getTime(lstCols.get(i - 1).name) : null;
   }
 
   @Override
   public Timestamp getTimestamp(int i) throws SQLException {
-    logger.debug("getTimestamp - index");
+    logger.debug("getTimestamp - index: " + i);
     wasNull = false;
     return lstCols != null ? getTimestamp(lstCols.get(i - 1).name) : null;
   }
@@ -396,7 +396,7 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public Object getObject(int i) throws SQLException {
-    logger.debug("getObject - index");
+    logger.debug("getObject - index: " + i);
     wasNull = false;
     return lstCols != null ? getObject(lstCols.get(i - 1).name) : null;
   }
