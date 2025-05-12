@@ -865,7 +865,6 @@ public class ArangoDBStatement implements Statement {
     else if (plain.getSelectItems().get(0).getExpression() instanceof AllColumns) {
       if (lstTabAlias.size() > 1)
         sb.append("MERGE(");
-      lstRCols = new ArrayList<>();
       boolean first = true;
       for (String tab : lstTabAlias.keySet()) {
         String a = lstTabAlias.get(tab);
