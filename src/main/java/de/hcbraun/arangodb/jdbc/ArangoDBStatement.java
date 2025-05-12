@@ -1199,10 +1199,12 @@ public class ArangoDBStatement implements Statement {
 
   private HashMap<String, HashMap<String, ColInfo>> readCollectionSchema(Collection<String> collections) {
     HashMap<String, HashMap<String, ColInfo>> lstColsDesc = new HashMap<>();
-    StructureManager sm = connection.getStructureManager();
-    collections.forEach(col -> {
-      lstColsDesc.put(col, sm.getColInfo(col));
-    });
+    if (connection != null) {
+      StructureManager sm = connection.getStructureManager();
+      collections.forEach(col -> {
+        lstColsDesc.put(col, sm.getColInfo(col));
+      });
+    }
     return lstColsDesc;
   }
 
