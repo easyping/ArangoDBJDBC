@@ -864,7 +864,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   private int addSchemaColumns(CollectionSchema cSchema, List<SchemaNode> properties, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema, List<String> lstCalledReferences) {
     for (SchemaNode node : properties) {
       if (node.getDataType().get(0) == Types.STRUCT &&
-        (node.getProperties() != null && !node.getProperties().isEmpty()) || (node.getReferences() != null && !node.getReferences().isEmpty())) {
+        ((node.getProperties() != null && !node.getProperties().isEmpty()) || (node.getReferences() != null && !node.getReferences().isEmpty()))) {
         if (node.getReferences() != null && !node.getReferences().isEmpty()) {
           for (String ref : node.getReferences()) {
             SchemaReference sRef = cSchema.getReferences() != null ? cSchema.getReferences().get(ref) : null;
