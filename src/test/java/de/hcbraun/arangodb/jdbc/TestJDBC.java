@@ -11,15 +11,19 @@ import org.junit.jupiter.api.Test;
 
 import java.sql.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestJDBC {
 
   private static String host = "localhost:8529", databaseName = "TestJDBC", user = "testJdbc", password = "pwd4Test&jdbc";
 
   private Connection getConnection() throws ClassNotFoundException, SQLException {
+    return getConnection(null);
+  }
+
+  private Connection getConnection(String option) throws ClassNotFoundException, SQLException {
     Class.forName("de.hcbraun.arangodb.jdbc.ArangoDBDriver");
-    return DriverManager.getConnection("jdbc:hcbraun:arangodb:" + host + "/" + databaseName, user, password);
+    return DriverManager.getConnection("jdbc:hcbraun:arangodb:" + host + "/" + databaseName + (option != null ? ";" + option : ""), user, password);
   }
 
   @BeforeAll
@@ -46,7 +50,8 @@ public class TestJDBC {
       col.create(cco);
       col.importDocuments(RawJson.of("[{\"_key\":\"AC\",\"name\":\"Ascension\",\"isoCode2\":\"AC\",\"isoCode3\":\"ASC\",\"telephoneAreaCode\":\"+247\",\"timeZone\":\"-1\",\"language\":\"EN\",\"eu\":false,\"currency\":\"EUR\"}," +
         "{\"_key\":\"BE\",\"name\":\"Belgium\",\"isoCode2\":\"BE\",\"isoCode3\":\"BEL\",\"telephoneAreaCode\":\"+32\",\"timeZone\":\"+1\",\"language\":\"EN\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"06\",\"currency\":\"EUR\"}," +
-        "{\"_key\":\"DE\",\"name\":\"Deutschland\",\"isoCode2\":\"DE\",\"isoCode3\":\"DEU\",\"telephoneAreaCode\":\"+49\",\"timeZone\":\"+1\",\"language\":\"DE\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"01\",\"currency\":\"EUR\"}]"));
+        "{\"_key\":\"DE\",\"name\":\"Deutschland\",\"isoCode2\":\"DE\",\"isoCode3\":\"DEU\",\"telephoneAreaCode\":\"+49\",\"timeZone\":\"+1\",\"language\":\"DE\",\"eu\":true,\"addressFormat\":\"100\",\"region\":\"01\",\"currency\":\"EUR\"}," +
+        "{\"_key\":\"NL\",\"name\": \"Netherlands\",\"isoCode2\": \"NL\",\"isoCode3\": \"NLD\",\"telephoneAreaCode\": \"+31\",\"timeZone\": \"+1\",\"language\": \"EN\",\"eu\": true,\"addressFormat\": \"100\",\"region\": \"04\",\"currency\": \"EUR\"}]"));
     } else {
       if (col.documentExists("XINS"))
         col.deleteDocument("XINS");
@@ -60,6 +65,21 @@ public class TestJDBC {
       cco.schema(cs);
       col.create(cco);
       col.importDocuments(RawJson.of("[{\"_key\":\"01\",\"name\":\"Deutschland\"},{\"_key\":\"06\",\"name\":\"Westeuropa\"}]"));
+    } else {
+      if (col.documentExists("XINS"))
+        col.deleteDocument("XINS");
+    }
+    col = database.collection("ServiceArea");
+    if (!col.exists()) {
+      CollectionCreateOptions cco = new CollectionCreateOptions();
+      CollectionSchema cs = new CollectionSchema();
+      cs.setLevel(CollectionSchema.Level.NONE);
+      cs.setRule("{\"properties\": {\"_key\": {\"type\": \"string\"},\"_id\": {\"type\": \"string\"},\"_rev\": {\"type\": \"string\"},\"changeInfo\": {\"$ref\": \"#/$defs/ChangeInfo\"},\"name\": {\"type\": \"string\"},\"allocation\": {\"oneOf\": [{\"type\": \"array\",\"items\": {\"$ref\": \"#/$defs/SalesAreaAllocation\"}},{\"type\": \"null\"}]}},\"additionalProperties\": true,\"required\": [\"name\"]," +
+        "\"$defs\": {\"ChangeInfo\": {\"type\": \"object\",\"properties\": {\"createUser\": {\"type\": \"string\"},\"createDate\": {\"type\": \"string\",\"format\": \"yyyy-MM-ddTHH:mm:ss.SSSZ\"},\"lastUser\": {\"type\": \"string\"},\"lastDate\": {\"type\": \"string\",\"format\": \"yyyy-MM-ddTHH:mm:ss.SSSZ\"},\"lastAllowChangeUser\": {\"type\": \"string\"},\"lastAllowChangeDate\": {\"type\": \"string\",\"format\": \"yyyy-MM-ddTHH:mm:ss.SSSZ\"}}}," +
+        "\"SalesAreaAllocation\": {\"type\": \"object\",\"properties\": {\"country\": {\"type\": \"string\"},\"postcodeFrom\": {\"type\": \"string\"},\"postcodeUntil\": {\"type\": \"string\"},\"industryCode\": {\"oneOf\": [{\"type\": \"string\"},{\"type\": \"null\"}]}},\"required\": [\"country\",\"postcodeFrom\",\"postcodeUntil\"]}}}");
+      cco.schema(cs);
+      col.create(cco);
+      col.importDocuments(RawJson.of("[{\"_key\": \"SG012\",\"name\": \"Area-1\",\"allocation\": [{\"country\": \"NL\"},{\"country\": \"DE\"}],\"changeInfo\": {\"createDate\": \"2022-12-14T13:51:55.372Z\",\"createUser\": \"20645763\",\"lastDate\": \"2023-02-07T10:55:19.728Z\",\"lastUser\": \"20645763\"}}]"));
     } else {
       if (col.documentExists("XINS"))
         col.deleteDocument("XINS");
@@ -217,5 +237,106 @@ public class TestJDBC {
     }
   }
 
+  @Test
+  public void testAQLQueryGroupResult() {
+    try {
+      Connection con = getConnection("arrayCollectionEnabled=true");
+      DatabaseMetaData dmd = con.getMetaData();
+
+      ResultSet rs = dmd.getTables(null, null, null, null);
+      boolean found = false;
+      while (rs.next()) {
+        if (rs.getString("TABLE_NAME").equals("ServiceArea_allocation")) {
+          found = true;
+          break;
+        }
+      }
+      assertTrue(found, "Table ServiceArea_allocation not found");
+      rs.close();
+
+      rs = dmd.getColumns(null, null, "ServiceArea_allocation", null);
+      boolean foundKey = false;
+      found = false;
+      while (rs.next()) {
+        if (rs.getString("COLUMN_NAME").equals("_key")) {
+          foundKey = true;
+        } else if (rs.getString("COLUMN_NAME").equals("country")) {
+          found = true;
+        }
+      }
+      assertTrue(foundKey, "Column _key not found");
+      assertTrue(found, "Column country not found");
+      rs.close();
+
+      Statement stat = con.createStatement();
+      rs = stat.executeQuery("SELECT country FROM ServiceArea_allocation ORDER BY country");
+      if (rs != null) {
+        if (rs.next()) {
+          assertEquals("country", rs.getMetaData().getColumnName(1));
+          assertEquals("DE", rs.getString(1));
+        }
+        rs.close();
+      }
+
+      rs = stat.executeQuery("SELECT ServiceArea.name, ServiceArea_allocation.country " +
+        "FROM ServiceArea JOIN ServiceArea_allocation ON ServiceArea._key=ServiceArea_allocation._key " +
+        "ORDER BY ServiceArea_allocation.country DESC");
+      if (rs != null) {
+        if (rs.next()) {
+          assertEquals("country", rs.getMetaData().getColumnName(2));
+          assertEquals("NL", rs.getString(2));
+          assertEquals("Area-1", rs.getString(1));
+        } else
+          fail("No row found");
+        rs.close();
+      } else
+        fail("No result found");
+
+      rs = stat.executeQuery("SELECT ServiceArea_allocation.country, ServiceArea.name " +
+        "FROM ServiceArea_allocation JOIN ServiceArea ON ServiceArea._key=ServiceArea_allocation._key " +
+        "ORDER BY ServiceArea_allocation.country");
+      if (rs != null) {
+        if (rs.next()) {
+          assertEquals("country", rs.getMetaData().getColumnName(1));
+          assertEquals("DE", rs.getString(1));
+          assertEquals("Area-1", rs.getString(2));
+        } else
+          fail("No row found");
+        rs.close();
+      } else
+        fail("No result found");
+
+      rs = stat.executeQuery("SELECT ServiceArea_allocation.country, Country.name " +
+        "FROM ServiceArea_allocation JOIN Country ON ServiceArea_allocation.country=Country._key " +
+        "ORDER BY ServiceArea_allocation.country DESC");
+      if (rs != null) {
+        if (rs.next()) {
+          assertEquals("name", rs.getMetaData().getColumnName(2));
+          assertEquals("NL", rs.getString(1));
+          assertEquals("Netherlands", rs.getString(2));
+        } else
+          fail("No row found");
+        rs.close();
+      } else
+        fail("No result found");
+
+      rs = stat.executeQuery("SELECT ServiceArea_allocation.country, Country.name " +
+        "FROM Country JOIN ServiceArea_allocation ON ServiceArea_allocation.country=Country._key " +
+        "ORDER BY ServiceArea_allocation.country");
+      if (rs != null) {
+        if (rs.next()) {
+          assertEquals("name", rs.getMetaData().getColumnName(2));
+          assertEquals("DE", rs.getString(1));
+          assertEquals("Deutschland", rs.getString(2));
+        } else
+          fail("No row found");
+        rs.close();
+      } else
+        fail("No result found");
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 
 }

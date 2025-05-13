@@ -23,6 +23,7 @@ public class ArangoDBConnection implements Connection {
   private HashMap<String, String> lstCollectionAlias = new HashMap<>();
   private HashMap<String, String> lstAliasCollection = new HashMap<>();
   private StructureManager structureManager = null;
+  private boolean arrayCollectionEnabled = false;
 
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
@@ -58,6 +59,9 @@ public class ArangoDBConnection implements Connection {
           lstAliasCollection.put(p[1], p[0]);
           logger.info("Collection-Alias: {} -> {}", p[0], p[1]);
         }
+      } else if("arrayCollectionEnabled".equals(key)) {
+        arrayCollectionEnabled = "true".equalsIgnoreCase(lstPara.get(key));
+        logger.info("Array-Collection-Enabled: {}", arrayCollectionEnabled);
       }
     }
     String databaseName = pdb.length > 1 ? pdb[1] : lstPara.get("database");
@@ -69,6 +73,7 @@ public class ArangoDBConnection implements Connection {
     if (separatorStructColumn != null)
       logger.info("Connection use separatorStructColumn: " + separatorStructColumn);
     structureManager = new StructureManager(this);
+    structureManager.setArrayCollectionEnabled(arrayCollectionEnabled);
   }
 
   protected String getUserName() {

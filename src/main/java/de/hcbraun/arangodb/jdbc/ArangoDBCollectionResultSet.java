@@ -12,13 +12,13 @@ public class ArangoDBCollectionResultSet extends ArangoDBResultSet {
 
   private final Logger logger = LoggerFactory.getLogger(ArangoDBCollectionResultSet.class);
 
-  Collection<CollectionEntity> lstCol;
-  CollectionEntity curCol = null;
-  Iterator<CollectionEntity> it = null;
+  Collection<String> lstCol;
+  String curCol = null;
+  Iterator<String> it = null;
   private String schema = "adbdbo";
   private ArangoDBConnection connection;
 
-  protected ArangoDBCollectionResultSet(Collection<CollectionEntity> lstCol, String schema, ArangoDBConnection connection) {
+  protected ArangoDBCollectionResultSet(Collection<String> lstCol, String schema, ArangoDBConnection connection) {
     super(null, null, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s,TABLE_NAME:s," +
             "TABLE_TYPE:s,REMARKS:s,TYPE_CAT:s,TYPE_SCHEM:s,TYPE_NAME:s,SELF_REFERENCING_COL_NAME:s,REF_GENERATION:s"));
     this.lstCol = lstCol;
@@ -36,7 +36,7 @@ public class ArangoDBCollectionResultSet extends ArangoDBResultSet {
     else
       curCol = null;
     if (curCol != null)
-      logger.debug("next-Row: " + curCol.getName() + " / " + (curCol.getSchema() != null ? curCol.getSchema().toString() : ""));
+      logger.debug("next-Row: " + curCol);
     return curCol != null;
   }
 
@@ -51,7 +51,7 @@ public class ArangoDBCollectionResultSet extends ArangoDBResultSet {
   protected Object getFieldValue(String selectExpression) {
     switch (selectExpression) {
       case "TABLE_NAME":
-        return connection.getCollectionAlias(curCol.getName());
+        return connection.getCollectionAlias(curCol);
       case "TABLE_TYPE":
         return "TABLE";
       case "REMARKS":

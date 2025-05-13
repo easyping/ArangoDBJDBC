@@ -746,13 +746,16 @@ public class ArangoDBMetaData implements DatabaseMetaData {
 
     if (con != null) {
       Collection<CollectionEntity> cols = con.getDatabase().getCollections();
-      ArrayList<CollectionEntity> lst = new ArrayList<>();
+      ArrayList<String> lst = new ArrayList<>();
       for (CollectionEntity row : cols) {
         logger.debug("Table: " + row.getName());
         if (!row.getIsSystem())
-          lst.add(row);
+          lst.add(row.getName());
       }
-      lst.sort(Comparator.comparing(CollectionEntity::getName));
+      if (con.getStructureManager().getVirtualCollections() != null) {
+        lst.addAll(con.getStructureManager().getVirtualCollections().keySet());
+      }
+      lst.sort(Comparator.naturalOrder());
       return new ArangoDBCollectionResultSet(lst, schema, con);
     }
 
@@ -803,6 +806,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             Map<String, Object> sa = (Map) doc.getAttribute("schema");
             if (sa != null) {
               String tableName = (String) doc.getAttribute("name");
+              logger.info("Table getColumns: " + tableName);
               CollectionSchema cSchema = con.getStructureManager().getSchema(tableName, new BaseDocument(sa));
               addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableName, schema, new ArrayList<String>());
             }
@@ -812,18 +816,39 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         e.printStackTrace();
       }
     } else {
-      CollectionSchema cSchema = con.getStructureManager().getSchema(tableNamePattern);
-      cols = new ArrayList<>();
-      if (cSchema != null) {
-        addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableNamePattern, schema);
-        if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
-          ArrayList<HashMap<String, Object>> nCols = new ArrayList<>();
-          for (HashMap<String, Object> row : cols) {
-            String colName = (String) row.get("COLUMN_NAME");
-            if (colName.matches(columnNamePattern))
-              nCols.add(row);
+      if (con != null && con.getStructureManager().getVirtualCollections().containsKey(tableNamePattern)) {
+        SchemaVirtual sv = con.getStructureManager().getVirtualCollections().get(tableNamePattern);
+        CollectionSchema cSchema = con.getStructureManager().getSchema(sv.getCollectionName());
+        if (cSchema != null) {
+          SchemaNode node = cSchema.getProperties().stream()
+            .filter(n -> n.getName().equals(sv.getColumnName()))
+            .findFirst()
+            .orElse(null);
+          if (node != null) {
+            cols = new ArrayList<>();
+            addSchemaRow(new SchemaNode("_key"), "", cols, 0, tableNamePattern, schema, Types.STRUCT);
+            for (String ref : node.getReferences()) {
+              SchemaReference sRef = cSchema.getReferences().get(ref);
+              if (sRef != null) {
+                addSchemaColumns(cSchema, sRef.getProperties(), "", cols, 1, tableNamePattern, schema, new ArrayList<String>());
+              }
+            }
           }
-          cols = nCols;
+        }
+      } else {
+        CollectionSchema cSchema = con.getStructureManager().getSchema(tableNamePattern);
+        cols = new ArrayList<>();
+        if (cSchema != null) {
+          addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableNamePattern, schema, new ArrayList<String>());
+          if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
+            ArrayList<HashMap<String, Object>> nCols = new ArrayList<>();
+            for (HashMap<String, Object> row : cols) {
+              String colName = (String) row.get("COLUMN_NAME");
+              if (colName.matches(columnNamePattern))
+                nCols.add(row);
+            }
+            cols = nCols;
+          }
         }
       }
     }

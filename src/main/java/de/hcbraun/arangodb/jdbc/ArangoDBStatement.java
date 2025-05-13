@@ -650,14 +650,49 @@ public class ArangoDBStatement implements Statement {
     else
       alias = "c" + (appendOpt.collectionNo++);
     dftAlias = alias;
-    sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
-    dftTabName = getAliasCollection(fromItem.getName());
-    lstTabAlias.put(fromItem.getName(), alias);
+    StructureManager sm = connection != null ? connection.getStructureManager() : null;
+    SchemaVirtual sv = sm != null ? sm.getVirtualCollections().get(fromItem.getName()) : null;
+    if (sv != null) {
+      String alias2 = "c" + (appendOpt.collectionNo++);
+      sb.append(alias2).append(" IN ").append(sv.getCollectionName()).append(" FOR ").append(alias).append(" IN ").append(alias2).append(".").append(sv.getColumnName());
+      dftTabName = sv.getCollectionName();
+      lstTabAlias.put(fromItem.getName(), alias);
+      lstTabAlias.put(sv.getCollectionName(), alias2);
+    } else {
+      sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
+      dftTabName = getAliasCollection(fromItem.getName());
+      lstTabAlias.put(fromItem.getName(), alias);
+    }
 
-    if (plain.getJoins() != null && plain.getJoins().size() > 0) {
-      for (Join j : plain.getJoins()) {
+    if (plain.getJoins() != null && !plain.getJoins().isEmpty()) {
+      for (int i = 0; i < plain.getJoins().size(); i++) {
+        Join j = plain.getJoins().get(i);
         fromItem = (Table) j.getRightItem();
-        if (j.getOnExpressions() != null && j.getOnExpressions().size() > 0) {
+        sv = sm != null ? sm.getVirtualCollections().get(fromItem.getName()) : null;
+        if (sv != null) {
+          String tAlias = lstTabAlias.get(sv.getCollectionName());
+          boolean addJoin = false;
+          if (tAlias == null) {
+            tAlias = "c" + (appendOpt.collectionNo++);
+            lstTabAlias.put(sv.getCollectionName(), tAlias);
+            sb.append(" FOR ").append(tAlias).append(" IN ").append(sv.getCollectionName());
+            addJoin = true;
+          }
+          String vAlias = "c" + (appendOpt.collectionNo++);
+          sb.append(" FOR ").append(vAlias).append(" IN ").append(tAlias).append(".").append(sv.getColumnName());
+          lstTabAlias.put(fromItem.getName(), vAlias);
+          if (addJoin && j.getOnExpressions() != null && !j.getOnExpressions().isEmpty()) {
+            if (j.getOnExpressions().size() == 1) {
+              Expression on = j.getOnExpressions().iterator().next();
+              if (on instanceof EqualsTo || (on instanceof Parenthesis && ((Parenthesis) on).getExpression() instanceof EqualsTo)) {
+                EqualsTo et = (EqualsTo) (on instanceof EqualsTo ? on : ((Parenthesis) on).getExpression());
+                Column left = (Column) et.getLeftExpression();
+                Column right = (Column) et.getRightExpression();
+                sb.append(" FILTER ").append(lstTabAlias.get(left.getTable().getName())).append(".").append(left.getColumnName()).append("==").append(lstTabAlias.get(right.getTable().getName())).append(".").append(right.getColumnName());
+              }
+            }
+          }
+        } else if (j.getOnExpressions() != null && !j.getOnExpressions().isEmpty()) {
           // check are only ._key use in on expression
           if (j.getOnExpressions().size() == 1) {
             String filterPara = null;
@@ -690,19 +725,23 @@ public class ArangoDBStatement implements Statement {
               }
             }
             if (filterPara != null || sId != null) {
-              sb.append(" LET ");
-              if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
-                !fromItem.getAlias().getName().equals(fromItem.getName()))
-                alias = fromItem.getAlias().getName();
-              else
-                alias = "c" + (appendOpt.collectionNo++);
-              lstTabAlias.put(fromItem.getName(), alias);
-              if (sId != null)
-                sb.append(alias).append("=DOCUMENT(").append(sId).append(")");
-              else
-                sb.append(alias).append("=DOCUMENT('").append(getAliasCollection(fromItem.getName())).append("',").append(filterPara).append(")");
-              if (!j.isOuter() && !j.isInner())
-                sb.append(" FILTER ").append(alias).append(sId != null ? "._id" : "._key");
+              String prevTable = (i == 0 ? ((Table) plain.getFromItem()).getName() : ((Table) plain.getJoins().get(i - 1).getRightItem()).getName());
+              sv = sm != null ? sm.getVirtualCollections().get(prevTable) : null;
+              if (sv == null || !sv.getCollectionName().equals(fromItem.getName())) {
+                sb.append(" LET ");
+                if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+                  !fromItem.getAlias().getName().equals(fromItem.getName()))
+                  alias = fromItem.getAlias().getName();
+                else
+                  alias = "c" + (appendOpt.collectionNo++);
+                lstTabAlias.put(fromItem.getName(), alias);
+                if (sId != null)
+                  sb.append(alias).append("=DOCUMENT(").append(sId).append(")");
+                else
+                  sb.append(alias).append("=DOCUMENT('").append(getAliasCollection(fromItem.getName())).append("',").append(filterPara).append(")");
+                if (!j.isOuter() && !j.isInner())
+                  sb.append(" FILTER ").append(alias).append(sId != null ? "._id" : "._key");
+              }
             } else if (j.isOuter()) {
               sb.append(" LET ");
               if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
@@ -801,7 +840,6 @@ public class ArangoDBStatement implements Statement {
             }
           }
           if (connection != null && ci != null) {
-            StructureManager sm = connection.getStructureManager();
             if (sm != null) {
               CollectionSchema colSchema = sm.getSchema(c.getTable() != null ? c.getTable().getName() : dftTabName);
               if (colSchema != null) {
@@ -1238,7 +1276,18 @@ public class ArangoDBStatement implements Statement {
     if (connection != null) {
       StructureManager sm = connection.getStructureManager();
       collections.forEach(col -> {
-        lstColsDesc.put(col, sm.getColInfo(col));
+        SchemaVirtual sv = sm.getVirtualCollections().get(col);
+        if (sv != null) {
+          CollectionSchema schema = sm.getSchema(sv.getCollectionName());
+          SchemaNode node = schema.getProperties().stream()
+            .filter(n -> n.getName().equals(sv.getColumnName()))
+            .findFirst()
+            .orElse(null);
+          if (node != null) {
+            lstColsDesc.put(col, sm.getColInfo(sv.getCollectionName(), node.getReferences().get(0)));
+          }
+        } else
+          lstColsDesc.put(col, sm.getColInfo(col));
       });
     }
     return lstColsDesc;

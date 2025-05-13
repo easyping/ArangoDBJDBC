@@ -3,14 +3,21 @@ package de.hcbraun.arangodb.jdbc;
 import com.arangodb.ArangoCursor;
 import com.arangodb.ArangoDBException;
 import com.arangodb.entity.BaseDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Types;
 import java.util.*;
 
 public class StructureManager {
 
+  private final Logger logger = LoggerFactory.getLogger(StructureManager.class);
+
   ArangoDBConnection connection;
   int refreshTime = 180;
+
+  boolean arrayCollectionEnabled = false;
+  Map<String, SchemaVirtual> virtualCollections = new HashMap<>();
 
   Map<String, CollectionSchema> schemaMap = new HashMap<>();
 
@@ -26,6 +33,44 @@ public class StructureManager {
     this.refreshTime = refreshTime;
   }
 
+  public boolean isArrayCollectionEnabled() {
+    return arrayCollectionEnabled;
+  }
+
+  public void setArrayCollectionEnabled(boolean arrayCollectionEnabled) {
+    this.arrayCollectionEnabled = arrayCollectionEnabled;
+    if (arrayCollectionEnabled) {
+      try {
+        ArangoCursor<BaseDocument> cursor = connection.getDatabase().query("FOR c IN COLLECTIONS() FILTER !STARTS_WITH(c.name, '_') RETURN {name: c.name, schema: SCHEMA_GET(c.name)}", BaseDocument.class);
+        if (cursor != null) {
+          while (cursor.hasNext()) {
+            BaseDocument doc = cursor.next();
+            Map<String, Object> sa = (Map) doc.getAttribute("schema");
+            if (sa != null) {
+              String collection = (String) doc.getAttribute("name");
+              logger.info("Schema for " + collection);
+              String col = connection.getAliasCollection(collection);
+              CollectionSchema schema = analyseSchema(collection, col, sa);
+              if (!col.equals(collection))
+                schemaMap.put(col, schema);
+              schemaMap.put(collection, schema);
+              if (schema.getReferences() != null) {
+                for (SchemaNode sn : schema.getProperties()) {
+                  if (sn.getDataType().contains(Types.ARRAY) && sn.getReferences() != null && !sn.getReferences().isEmpty()) {
+                    String virtualCollection = collection + "_" + sn.getName();
+                    virtualCollections.put(virtualCollection, new SchemaVirtual(collection, virtualCollection, sn.getName()));
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (ArangoDBException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
   public CollectionSchema getSchema(String collection) {
     CollectionSchema schema = schemaMap.get(collection);
     if (schema == null || (schema.getNextRefresh() > 0 && schema.getNextRefresh() < System.currentTimeMillis())) {
@@ -33,7 +78,7 @@ public class StructureManager {
         String col = connection.getAliasCollection(collection);
         ArangoCursor<BaseDocument> cursor = connection.getDatabase().query("RETURN SCHEMA_GET('" + col + "')", BaseDocument.class);
         if (cursor != null) {
-          schema = analyseSchema(collection, col, cursor.next());
+          schema = analyseSchema(collection, col, cursor.next().getProperties());
           if (!col.equals(collection))
             schemaMap.put(col, schema);
           schemaMap.put(collection, schema);
@@ -49,7 +94,7 @@ public class StructureManager {
     CollectionSchema schema = schemaMap.get(collection);
     if (schema == null || (schema.getNextRefresh() > 0 && schema.getNextRefresh() < System.currentTimeMillis())) {
       String col = connection.getAliasCollection(collection);
-      schema = analyseSchema(collection, col, docSchema);
+      schema = analyseSchema(collection, col, docSchema.getProperties());
       if (!col.equals(collection))
         schemaMap.put(col, schema);
       schemaMap.put(collection, schema);
@@ -57,8 +102,8 @@ public class StructureManager {
     return schema;
   }
 
-  private CollectionSchema analyseSchema(String collection, String col, BaseDocument doc) {
-    Map<String, Object> rule = (Map) doc.getAttribute("rule");
+  private CollectionSchema analyseSchema(String collection, String col, Map<String, Object> doc) {
+    Map<String, Object> rule = (Map) doc.get("rule");
     Map<String, Object> props = (Map) rule.get("properties");
     Map<String, Object> defs = (Map) rule.get("$defs");
 
@@ -252,4 +297,24 @@ public class StructureManager {
     }
   }
 
+  public HashMap<String, ColInfo> getColInfo(String collection, String reference) {
+    HashMap<String, ColInfo> cols = new HashMap<>();
+
+    CollectionSchema sm = getSchema(collection);
+    if (sm != null) {
+      ColInfo ci = new ColInfo("_key", "NVARCHAR", Types.VARCHAR, String.class.getName());
+      ci.tabName = sm.getAliasName();
+      cols.put("_key", ci);
+      addRefCollInfo(sm, reference, "", cols);
+    }
+    return cols;
+  }
+
+  public Map<String, SchemaVirtual> getVirtualCollections() {
+    return virtualCollections;
+  }
+
+  public void setVirtualCollections(Map<String, SchemaVirtual> virtualCollections) {
+    this.virtualCollections = virtualCollections;
+  }
 }
