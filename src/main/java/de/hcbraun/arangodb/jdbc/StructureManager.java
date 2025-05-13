@@ -86,6 +86,8 @@ public class StructureManager {
           schema.getDatatypes().put(k, dt);
         }
       }
+      if (!refs.isEmpty())
+        schema.setReferences(refs);
     }
     if (props != null) {
       schema.setProperties(createListOfNodes(props));
@@ -104,6 +106,10 @@ public class StructureManager {
       Map<String, Object> m = (Map) v;
       String dt = (String) m.get("type");
       String ref = (String) m.get("$ref");
+      Map<String, Object> items = (Map<String, Object>) m.get("items");
+      if (ref == null && items != null) {
+        ref = (String) items.get("$ref");
+      }
       String df = (String) m.get("format");
       List lstOneOf = (List) m.get("oneOf");
       List enumType = (List) m.get("enum");
@@ -112,7 +118,8 @@ public class StructureManager {
 
       if (ref != null) {
         ArrayList<Integer> dtList = new ArrayList<>();
-        dtList.add(Types.STRUCT);
+        int dT = findDataType(dt, df, multipleOf);
+        dtList.add(dT == Types.ARRAY ? dT : Types.STRUCT);
         node.setDataType(dtList);
         ArrayList<String> refList = new ArrayList<>();
         refList.add(ref.substring(ref.lastIndexOf('/') + 1));
@@ -124,12 +131,17 @@ public class StructureManager {
           Map<String, Object> moo = (Map) o;
           String mDt = (String) moo.get("type");
           String mRef = (String) moo.get("$ref");
+          Map<String, Object> mItems = (Map<String, Object>) moo.get("items");
+          if (mRef == null && mItems != null) {
+            mRef = (String) mItems.get("$ref");
+          }
           String mDf = (String) moo.get("format");
           Number mMultipleOf = (Number) moo.get("multipleOf");
           if ("null".equalsIgnoreCase(mDt)) {
             node.setNullable(true);
           } else if (mRef != null) {
-            dtList.add(Types.STRUCT);
+            int dT = findDataType(mDt, mDf, mMultipleOf);
+            dtList.add(dT == Types.ARRAY ? dT : Types.STRUCT);
             refList.add(mRef.substring(mRef.lastIndexOf('/') + 1));
           } else {
             dtList.add(findDataType(mDt, mDf, mMultipleOf));

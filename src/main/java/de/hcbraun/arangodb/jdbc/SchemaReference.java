@@ -14,6 +14,7 @@ public class SchemaReference {
 
   SchemaReference(String name, List<SchemaNode> properties) {
     this.name = name;
+    this.properties = properties;
   }
 
   public String getName() {
