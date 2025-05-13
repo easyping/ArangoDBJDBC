@@ -804,7 +804,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             if (sa != null) {
               String tableName = (String) doc.getAttribute("name");
               CollectionSchema cSchema = con.getStructureManager().getSchema(tableName, new BaseDocument(sa));
-              addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableName, schema);
+              addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableName, schema, new ArrayList<String>());
             }
           }
         }
@@ -836,15 +836,18 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     return null;
   }
 
-  private int addSchemaColumns(CollectionSchema cSchema, List<SchemaNode> properties, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema) {
+  private int addSchemaColumns(CollectionSchema cSchema, List<SchemaNode> properties, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema, List<String> lstCalledReferences) {
     for (SchemaNode node : properties) {
       if (node.getDataType().get(0) == Types.STRUCT &&
         (node.getProperties() != null && !node.getProperties().isEmpty()) || (node.getReferences() != null && !node.getReferences().isEmpty())) {
         if (node.getReferences() != null && !node.getReferences().isEmpty()) {
           for (String ref : node.getReferences()) {
             SchemaReference sRef = cSchema.getReferences() != null ? cSchema.getReferences().get(ref) : null;
-            if (sRef != null)
-              colPos = addSchemaColumns(cSchema, sRef.getProperties(), prefix + node.getName() + separatorStructColumn, cols, colPos, tableName, schema);
+            if (sRef != null && !lstCalledReferences.contains(sRef.getName())) {
+              lstCalledReferences.add(sRef.getName());
+              colPos = addSchemaColumns(cSchema, sRef.getProperties(), prefix + node.getName() + separatorStructColumn, cols, colPos, tableName, schema, lstCalledReferences);
+              lstCalledReferences.remove(lstCalledReferences.size() - 1);
+            }
             else {
               SchemaDatatype sDt = cSchema.getDatatypes() != null ? cSchema.getDatatypes().get(ref) : null;
               if (sDt != null) {
@@ -853,7 +856,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             }
           }
         } else
-          colPos = addSchemaColumns(cSchema, node.getProperties(), prefix + node.getName() + separatorStructColumn, cols, colPos, tableName, schema);
+          colPos = addSchemaColumns(cSchema, node.getProperties(), prefix + node.getName() + separatorStructColumn, cols, colPos, tableName, schema, lstCalledReferences);
       } else {
         colPos = addSchemaRow(node, prefix, cols, colPos, tableName, schema, node.getDataType().get(0));
       }
