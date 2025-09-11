@@ -198,6 +198,10 @@ public class ArangoDBResultSet implements ResultSet {
   public String getString(String s) throws SQLException {
     Object obj = getFieldValue(s);
     wasNull = obj == null;
+    if (!wasNull && obj instanceof List) {
+      String str = obj.toString();
+      return str.substring(1, str.length() - 1);
+    }
     return obj == null ? null : obj.toString();
   }
 
