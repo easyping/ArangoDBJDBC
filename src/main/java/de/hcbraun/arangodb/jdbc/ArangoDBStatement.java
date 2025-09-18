@@ -401,8 +401,13 @@ public class ArangoDBStatement implements Statement {
     return false;
   }
 
+  protected String modifySQLBeforeExecute(String sql) {
+    return sql;
+  }
+
   protected QueryInfo getAQL(String sql, Map<String, Object> parameters) {
     StringBuilder comments = null, newSql = null;
+    sql = modifySQLBeforeExecute(sql);
     sql = sql.replaceAll("\r\n", " ").replaceAll("\n\r", " ").replaceAll("\n", " ").replaceAll("\t", " ");
     Matcher matcher = commentsPattern.matcher(sql);
     int sPos = 0;
