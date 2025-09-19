@@ -19,7 +19,7 @@ public class ArangoDBConnection implements Connection {
   private ArangoDatabase database = null;
   private String userName = null;
   private String schema = "adbdbo";
-  private String separatorStructColumn = null;
+  protected String separatorStructColumn = null;
   private HashMap<String, String> lstCollectionAlias = new HashMap<>();
   private HashMap<String, String> lstAliasCollection = new HashMap<>();
   private StructureManager structureManager = null;
