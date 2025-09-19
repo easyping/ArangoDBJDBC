@@ -1083,12 +1083,12 @@ public class ArangoDBStatement implements Statement {
       return getSqlColumn((Column) exp, lstTabAlias, dftAlias, appendOpt);
     } else if (exp instanceof AndExpression) {
       AndExpression and = (AndExpression) exp;
-      return appendExpression(and.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup) + " && " +
-        appendExpression(and.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup);
+      return "(" + appendExpression(and.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup) + " && " +
+        appendExpression(and.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup) + ")";
     } else if (exp instanceof OrExpression) {
       OrExpression or = (OrExpression) exp;
-      return appendExpression(or.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup) + " || " +
-        appendExpression(or.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup);
+      return "(" + appendExpression(or.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup) + " || " +
+        appendExpression(or.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup) + ")";
     } else if (exp instanceof ComparisonOperator) {
       ComparisonOperator comp = (ComparisonOperator) exp;
       String op = comp.getStringExpression();
