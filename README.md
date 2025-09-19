@@ -32,6 +32,42 @@ e.g. FOR c IN Country FILTER c.region==@p1 && c.isoCode2==@p2 RETURN c
 - ResultSet - update functions
 - Transaction
 
+### Driver options
+
+- jdbcUrl: jdbc:hcbraun:arangodb:[host]:[port]/[databaseName][;options=value]
+- host: localhost
+- port: 8529
+- databaseName: _system
+- options:
+  - collectionAlias=[collection]:[alias]  // e.g. collectionAlias=Order:aOrder
+  - arrayCollectionEnabled=[true|false]
+  - arraySimpleValueEnabled=[true|false]
+  - modifySqlStatement=[classname with package]
+  - modifyAql=[classname with package]
+
+#### Option collectionAlias
+
+The collectionAlias option allows to use a different name for a collection than the collection name.  
+e.g. collectionAlias=Order:aOrder
+
+#### Option arrayCollectionEnabled
+
+If the arrayCollectionEnabled option is set to true. Virtual collections are added for all object array properties in the main level of a collection.  
+  
+#### Option arraySimpleValueEnabled
+
+If the arraySimpleValueEnabled option is set to true. Virtual collections are added for all simple array properties in the main level of a collection.  
+  
+#### Option modifySqlStatement
+
+The referenced class must implement the IModifySQLStatement interface. This allows the SQL command to be adapted before it is rewritten as an AQL command.
+This interface has only one method: String modifySQLStatement(String sqlStatement).
+
+#### Option modifyAql
+
+The referenced class must implement the IModifyAQL interface. This allows the AQL command to be adapted before it is executed.
+This interface has only one method: String modifyAQL(String aqlCommand).
+
 ### Contribute or report incorrect queries
 
 If SQL commands are implemented incorrectly, there are two options available.
