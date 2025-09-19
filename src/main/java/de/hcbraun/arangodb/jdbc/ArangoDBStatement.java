@@ -412,7 +412,7 @@ public class ArangoDBStatement implements Statement {
 
   protected String modifyAQLBeforeExecute(String aql) {
     if (connection != null && connection.getModifyAql() != null) {
-      connection.getModifyAql().modifyAQLBeforeExecute(aql);
+      aql = connection.getModifyAql().modifyAQLBeforeExecute(aql);
       logger.debug("modify aql: {}", aql);
     }
     return aql;
