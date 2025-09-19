@@ -8,9 +8,26 @@ import java.util.logging.Logger;
 public class ArangoDBDriver implements Driver {
   public final static String URL_PREFIX = "jdbc:hcbraun:arangodb";
 
+  protected static class ConnectionSettings {
+    public final String host;
+    public final String port;
+    public final HashMap<String, String> lstPara;
+
+    public ConnectionSettings(String host, String port, HashMap<String, String> lstPara) {
+      this.host = host;
+      this.port = port;
+      this.lstPara = lstPara;
+    }
+  }
+
   public Connection connect(String url, Properties info) throws SQLException {
     // Beispiel:  jdbc:hcbraun:arangodb:localhost:8529/testdb
 
+    ConnectionSettings settings = getConnectionSettings(url, info);
+    return new ArangoDBConnection(settings.host, settings.port, settings.lstPara);
+  }
+
+  protected static ConnectionSettings getConnectionSettings(String url, Properties info) {
     String[] part = url.split("/");
     String[] hostInfo = part[0].split(":");
     String host = "127.0.0.1", port = "8529";
@@ -31,8 +48,7 @@ public class ArangoDBDriver implements Driver {
       lstPara.put("user", (String) info.get("user"));
     if (lstPara.get("password") == null)
       lstPara.put("password", (String) info.get("password"));
-
-    return new ArangoDBConnection(host, port, lstPara);
+    return new ConnectionSettings(host, port, lstPara);
   }
 
   @Override
