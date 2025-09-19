@@ -402,7 +402,18 @@ public class ArangoDBStatement implements Statement {
   }
 
   protected String modifySQLBeforeExecute(String sql) {
+    if (connection != null && connection.getModifySqlStatement() != null) {
+      sql = connection.getModifySqlStatement().modifySQLBeforeExecute(sql);
+      logger.debug("modify sql: {}", sql);
+    }
     return sql;
+  }
+
+  protected void modifyAQLBeforeExecute(QueryInfo qi) {
+    if (connection != null && connection.getModifyAql() != null) {
+      connection.getModifyAql().modifyAQLBeforeExecute(qi);
+      logger.debug("modify aql: {}", qi.aql);
+    }
   }
 
   protected QueryInfo getAQL(String sql, Map<String, Object> parameters) {
@@ -642,6 +653,7 @@ public class ArangoDBStatement implements Statement {
         qi.rsmd = null;
     }
     logger.debug("aql: {}", qi.aql);
+    modifyAQLBeforeExecute(qi);
     return qi;
   }
 

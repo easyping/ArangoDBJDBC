@@ -6,6 +6,7 @@ import com.arangodb.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +25,8 @@ public class ArangoDBConnection implements Connection {
   private HashMap<String, String> lstAliasCollection = new HashMap<>();
   private StructureManager structureManager = null;
   private boolean arrayCollectionEnabled = false;
+  private IModifySQLStatement modifySqlStatement = null;
+  private IModifyAQL modifyAql = null;
 
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
@@ -62,6 +65,26 @@ public class ArangoDBConnection implements Connection {
       } else if("arrayCollectionEnabled".equals(key)) {
         arrayCollectionEnabled = "true".equalsIgnoreCase(lstPara.get(key));
         logger.info("Array-Collection-Enabled: {}", arrayCollectionEnabled);
+      } else if("modifySqlStatement".equals(key)) {
+        try {
+          Class<?> modifySqlStatementClass = Class.forName(lstPara.get(key));
+          logger.info("Modify-Sql-Statement: {}", modifySqlStatementClass.getName());
+          Object instance = modifySqlStatementClass.getDeclaredConstructor().newInstance();
+          if (instance instanceof IModifySQLStatement)
+            modifySqlStatement = (IModifySQLStatement)instance;
+        } catch (ClassNotFoundException | InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+          logger.error("Modify-Sql-Statement: " + lstPara.get(key) + " not found", e);
+        }
+      } else if("modifyAql".equals(key)) {
+        try {
+          Class<?> modifyAqlClass = Class.forName(lstPara.get(key));
+          logger.info("Modify-Aql: {}", modifyAqlClass.getName());
+          Object instance = modifyAqlClass.getDeclaredConstructor().newInstance();
+          if (instance instanceof IModifyAQL)
+            modifyAql = (IModifyAQL)instance;
+        } catch (ClassNotFoundException | InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+          logger.error("Modify-Aql: " + lstPara.get(key) + " not found", e);
+        }
       }
     }
     String databaseName = pdb.length > 1 ? pdb[1] : lstPara.get("database");
@@ -453,5 +476,13 @@ public class ArangoDBConnection implements Connection {
 
   protected StructureManager getStructureManager() {
     return structureManager;
+  }
+
+  protected IModifySQLStatement getModifySqlStatement() {
+	  return modifySqlStatement;
+  }
+
+  protected IModifyAQL getModifyAql() {
+	  return modifyAql;
   }
 }

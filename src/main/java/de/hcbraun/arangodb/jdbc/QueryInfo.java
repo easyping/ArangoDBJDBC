@@ -9,4 +9,28 @@ public class QueryInfo {
 
   public QueryInfo() {
   }
+
+  public String getAql() {
+    return aql;
+  }
+
+  public void setAql(String aql) {
+    this.aql = aql;
+  }
+
+  public ArangoDBResultSetMetaData getRsmd() {
+    return rsmd;
+  }
+
+  public void setRsmd(ArangoDBResultSetMetaData rsmd) {
+    this.rsmd = rsmd;
+  }
+
+  public Map<String, Object> getParameters() {
+    return parameters;
+  }
+
+  public void setParameters(Map<String, Object> parameters) {
+    this.parameters = parameters;
+  }
 }
