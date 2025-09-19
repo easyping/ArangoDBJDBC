@@ -234,7 +234,14 @@ public class StructureManager {
         node.setEnumValues(enumType);
       } else {
         ArrayList<Integer> dtList = new ArrayList<>();
-        dtList.add(findDataType(dt, df, multipleOf));
+        int dT = findDataType(dt, df, multipleOf);
+        dtList.add(dT);
+        if (dT == Types.ARRAY && arraySimpleValueEnabled && items != null) {
+          ArrayList<String> refList = new ArrayList<>();
+          refList.add(items.get("type").toString());
+          node.setReferences(refList);
+          node.setSimpleReferences(true);
+        }
         node.setDataType(dtList);
       }
       if (uProp instanceof Map) {
