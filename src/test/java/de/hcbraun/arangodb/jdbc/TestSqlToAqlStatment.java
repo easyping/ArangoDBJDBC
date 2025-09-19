@@ -228,11 +228,22 @@ public class TestSqlToAqlStatment {
 
   @Test
   public void testSimpleSelectWithTimestampFunction() {
-    assertEquals("FOR c1 IN aOrder LET c2=DOCUMENT('Address',c1.customerAddress) FILTER (c1.orderDate>='2022-04-30T22:00:00.000Z' && c1.orderDate<='2022-05-01T21:59:59.999Z') && c1.state=='40' COLLECT g0=c1.customerBP,g1=c2.name1 AGGREGATE ag1=Sum(c1.priceTotal) SORT g0,g1 RETURN {aOrder_customerBP:g0,Address_name1:g1,Sum_aOrder_priceTotal:ag1}",
+    assertEquals("FOR c1 IN aOrder LET c2=DOCUMENT('Address',c1.customerAddress) FILTER ((c1.orderDate>='2022-04-30T22:00:00.000Z' && c1.orderDate<='2022-05-01T21:59:59.999Z') && c1.state=='40') COLLECT g0=c1.customerBP,g1=c2.name1 AGGREGATE ag1=Sum(c1.priceTotal) SORT g0,g1 RETURN {aOrder_customerBP:g0,Address_name1:g1,Sum_aOrder_priceTotal:ag1}",
       (new ArangoDBStatement(null)).getAQL("select Address.name1 as Address_name1, Sum(aOrder.priceTotal) as Sum_aOrder_priceTotal, aOrder.customerBP as aOrder_customerBP " +
         "from aOrder aOrder inner join Address Address on (aOrder.customerAddress = Address._key) " +
         "where ((aOrder.orderDate between timestamp('2022-05-01 00:00:00') and timestamp('2022-05-01 00:00:00')) and aOrder.state = '40') " +
         "group by aOrder.customerBP, Address.name1 order by aOrder_customerBP, Address_name1", null).aql);
+  }
+
+  @Test
+  public void testBrackets() {
+    assertEquals("FOR c1 IN BusinessPartner FOR c2 IN Address FILTER c1._key==c2.bp FILTER ((((LIKE(c1.branchOffices,'%1%') || LIKE(c1.branchOffices,'%1%')) || LIKE(c1.branchOffices,'%1%')) && c2.houseAddress==1) && c2.houseAddress==1) COLLECT g0=c2.country AGGREGATE ag1=Sum(c1.creditLimit) SORT g0 RETURN {Address_country:g0,Sum_BusinessPartner_creditLimit:ag1}",
+      (new ArangoDBStatement(null)).getAQL("select Address.country as Address_country, " +
+        "Sum(BusinessPartner.creditLimit) as Sum_BusinessPartner_creditLimit " +
+        "from BusinessPartner BusinessPartner inner join Address Address on (BusinessPartner._key = Address.bp) " +
+        "where (((BusinessPartner.branchOffices like '%1%' or BusinessPartner.branchOffices like '%1%' or " +
+        "BusinessPartner.branchOffices like '%1%') and Address.houseAddress = 1) and Address.houseAddress = 1) " +
+        "group by Address.country order by Address_country", null).aql);
   }
 
 }
