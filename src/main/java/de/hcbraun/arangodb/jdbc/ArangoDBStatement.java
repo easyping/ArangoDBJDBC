@@ -674,7 +674,7 @@ public class ArangoDBStatement implements Statement {
     SchemaVirtual sv = sm != null ? sm.getVirtualCollections().get(fromItem.getName()) : null;
     if (sv != null) {
       String alias2 = "c" + (appendOpt.collectionNo++);
-      sb.append(alias2).append(" IN ").append(sv.getCollectionName()).append(" FOR ").append(alias).append(" IN ").append(alias2).append(".").append(sv.getColumnName());
+      sb.append(alias2).append(" IN ").append(sv.getCollectionName()).append(" FOR ").append(alias).append(" IN ").append(alias2).append(".").append(sv.getColumnName()).append(" || []");
       dftTabName = sv.getCollectionName();
       lstTabAlias.put(fromItem.getName(), alias);
       lstTabAlias.put(sv.getCollectionName(), alias2);
@@ -699,7 +699,7 @@ public class ArangoDBStatement implements Statement {
             addJoin = true;
           }
           String vAlias = "c" + (appendOpt.collectionNo++);
-          sb.append(" FOR ").append(vAlias).append(" IN ").append(tAlias).append(".").append(sv.getColumnName());
+          sb.append(" FOR ").append(vAlias).append(" IN ").append(tAlias).append(".").append(sv.getColumnName()).append(" || []");
           lstTabAlias.put(fromItem.getName(), vAlias);
           if (addJoin && j.getOnExpressions() != null && !j.getOnExpressions().isEmpty()) {
             if (j.getOnExpressions().size() == 1) {
