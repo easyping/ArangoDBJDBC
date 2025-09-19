@@ -494,10 +494,10 @@ public class ArangoDBStatement implements Statement {
             if (p instanceof JdbcParameter)
               sb.append("@p").append(((JdbcParameter) p).getIndex());
             else
-              sb.append(appendExpression(p, null, "c1", appendOpt, false, sm));
+              sb.append(appendExpression(p, null, "c1", appendOpt, false, sm, null));
           } else if (lstSelect != null) {
             SelectItem si = lstSelect.get(i);
-            sb.append(appendExpression(si.getExpression(), null, "c1", appendOpt, false, sm));
+            sb.append(appendExpression(si.getExpression(), null, "c1", appendOpt, false, sm, null));
           }
         }
         sb.append("} INTO ").append(insert.getTable().getName());
@@ -509,7 +509,7 @@ public class ArangoDBStatement implements Statement {
         sb.append(update.getTable().getName());
         if (update.getWhere() != null) {
           sb.append(" FILTER ");
-          sb.append(appendExpression(update.getWhere(), null, "c1", appendOpt, false, sm));
+          sb.append(appendExpression(update.getWhere(), null, "c1", appendOpt, false, sm, null));
         }
         sb.append(" UPDATE c1._key WITH {");
         for (UpdateSet us : update.getUpdateSets()) {
@@ -518,9 +518,9 @@ public class ArangoDBStatement implements Statement {
           for (int i = 0; i < lstCol.size(); i++) {
             if (i > 0)
               sb.append(",");
-            sb.append(getSqlColumn(lstCol.get(i), null, null, appendOpt));
+            sb.append(getSqlColumn(lstCol.get(i), null, null, appendOpt, null));
             sb.append(":");
-            sb.append(appendExpression(lstPara.get(i), null, "c1", appendOpt, false, sm));
+            sb.append(appendExpression(lstPara.get(i), null, "c1", appendOpt, false, sm, null));
           }
         }
         sb.append("} IN ").append(update.getTable().getName());
@@ -532,7 +532,7 @@ public class ArangoDBStatement implements Statement {
         sb.append(delete.getTable().getName());
         if (delete.getWhere() != null) {
           sb.append(" FILTER ");
-          sb.append(appendExpression(delete.getWhere(), null, "c1", appendOpt, false, sm));
+          sb.append(appendExpression(delete.getWhere(), null, "c1", appendOpt, false, sm, null));
         }
         sb.append(" REMOVE c1._key IN ").append(delete.getTable().getName());
         sb.append(" LET removed = OLD RETURN removed._key");
@@ -672,12 +672,15 @@ public class ArangoDBStatement implements Statement {
     dftAlias = alias;
     StructureManager sm = connection != null ? connection.getStructureManager() : null;
     SchemaVirtual sv = sm != null ? sm.getVirtualCollections().get(fromItem.getName()) : null;
+    List<String> lstAliasOfSimpleReference = new ArrayList<>();
     if (sv != null) {
       String alias2 = "c" + (appendOpt.collectionNo++);
       sb.append(alias2).append(" IN ").append(sv.getCollectionName()).append(" FOR ").append(alias).append(" IN ").append(alias2).append(".").append(sv.getColumnName()).append(" || []");
       dftTabName = sv.getCollectionName();
       lstTabAlias.put(fromItem.getName(), alias);
       lstTabAlias.put(sv.getCollectionName(), alias2);
+      if (sv.isSimpleReferences())
+        lstAliasOfSimpleReference.add(alias2);
     } else {
       sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName()));
       dftTabName = getAliasCollection(fromItem.getName());
@@ -701,6 +704,8 @@ public class ArangoDBStatement implements Statement {
           String vAlias = "c" + (appendOpt.collectionNo++);
           sb.append(" FOR ").append(vAlias).append(" IN ").append(tAlias).append(".").append(sv.getColumnName()).append(" || []");
           lstTabAlias.put(fromItem.getName(), vAlias);
+          if (sv.isSimpleReferences())
+            lstAliasOfSimpleReference.add(vAlias);
           if (addJoin && j.getOnExpressions() != null && !j.getOnExpressions().isEmpty()) {
             if (j.getOnExpressions().size() == 1) {
               Expression on = j.getOnExpressions().iterator().next();
@@ -725,22 +730,22 @@ public class ArangoDBStatement implements Statement {
               if (on instanceof EqualsTo) {
                 EqualsTo et = (EqualsTo) on;
                 if (et.getLeftExpression().toString().equals(s1) || et.getLeftExpression().toString().equals(s2))
-                  filterPara = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
+                  filterPara = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference);
                 else if (et.getRightExpression().toString().equals(s1) || et.getRightExpression().toString().equals(s2))
-                  filterPara = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
+                  filterPara = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference);
                 else if (et.getLeftExpression().toString().equals(sI1))
-                  sId = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
+                  sId = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference);
                 else if (et.getRightExpression().toString().equals(sI1))
-                  sId = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
+                  sId = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference);
               }
               if (on instanceof Parenthesis) {
                 Parenthesis p = (Parenthesis) on;
                 if (p.getExpression() instanceof EqualsTo) {
                   EqualsTo et = (EqualsTo) p.getExpression();
                   if (et.getLeftExpression().toString().equals(s1) || et.getLeftExpression().toString().equals(s2))
-                    filterPara = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt);
+                    filterPara = getSqlColumn((Column) et.getRightExpression(), lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference);
                   else if (et.getRightExpression().toString().equals(s1) || et.getRightExpression().toString().equals(s2))
-                    filterPara = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt);
+                    filterPara = getSqlColumn((Column) et.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference);
                 }
               }
             }
@@ -777,7 +782,7 @@ public class ArangoDBStatement implements Statement {
                 // alias in sql change in new alias
                 if (appendOpt.sqlAlias != null)
                   appendOpt.aqlAlias = oAlias;
-                sb.append(appendExpression(on, lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm));
+                sb.append(appendExpression(on, lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
               }
               appendOpt.sqlAlias = null;
               appendOpt.aqlAlias = null;
@@ -793,7 +798,7 @@ public class ArangoDBStatement implements Statement {
               sb.append(alias).append(" IN ").append(getAliasCollection(fromItem.getName())).append(" FILTER ");
               lstTabAlias.put(fromItem.getName(), alias);
               for (Expression on : j.getOnExpressions()) {
-                sb.append(appendExpression(on, lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm));
+                sb.append(appendExpression(on, lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
               }
             }
           }
@@ -821,7 +826,7 @@ public class ArangoDBStatement implements Statement {
         Function func = (Function) si.getExpression();
         String fName = func.getName().toUpperCase();
         if (aggregateSqlFunc.contains(fName) && (!fName.equals("LEN") || plain.getGroupBy() != null)) {
-          String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm);
+          String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference);
           lstColAggAlias.put(si.getAlias() != null ? si.getAlias().getName() : fName, ag);
           if ("COUNT".equals(fName))
             lstAggCols.add(new ColInfo(si.getAlias() != null ? si.getAlias().getName() : fName, "Integer", Types.INTEGER, Integer.class.toString()));
@@ -833,7 +838,7 @@ public class ArangoDBStatement implements Statement {
     }
     if (plain.getWhere() != null) {
       sb.append(" FILTER ");
-      sb.append(appendExpression(plain.getWhere(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm));
+      sb.append(appendExpression(plain.getWhere(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
     }
     // GROUP BY / HAVING => COLLECT / AGGREGATE
     StringBuilder gSb = null;
@@ -851,7 +856,7 @@ public class ArangoDBStatement implements Statement {
           else
             sb.append(",");
           sb.append("g").append(g).append("=");
-          sb.append(getSqlColumn(c, lstTabAlias, dftAlias, appendOpt));
+          sb.append(getSqlColumn(c, lstTabAlias, dftAlias, appendOpt, lstAliasOfSimpleReference));
           ColInfo ci = null;
           for (ColInfo cI : lstAggCols) {
             if (cI.getName().equals(c.getColumnName())) {
@@ -887,7 +892,7 @@ public class ArangoDBStatement implements Statement {
             if (lstColAliasGroup.containsKey(gExp.toString()))
               lstColAliasGroup.put(lstColAlias.get(gExp.toString()), "g" + g);
           } else
-            gSb.append(getSqlColumn((Column) gExp, null, null, appendOpt));
+            gSb.append(getSqlColumn((Column) gExp, null, null, appendOpt, lstAliasOfSimpleReference));
           gSb.append(":").append("g").append(g);
         }
       }
@@ -905,7 +910,7 @@ public class ArangoDBStatement implements Statement {
       if (appendOpt.aggregate != null || plain.getHaving() != null) {
         String agFilter = null;
         if (plain.getHaving() != null)
-          agFilter = appendExpression(plain.getHaving(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm);
+          agFilter = appendExpression(plain.getHaving(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference);
         sb.append(" AGGREGATE ").append(appendOpt.aggregate);
         if (agFilter != null)
           sb.append(" FILTER ").append(agFilter);
@@ -940,7 +945,7 @@ public class ArangoDBStatement implements Statement {
         if (lstColAliasGroup.containsKey(o.getExpression().toString()))
           sb.append(lstColAliasGroup.get(o.getExpression().toString()));
         else
-          sb.append(appendExpression(o.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm));
+          sb.append(appendExpression(o.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
         if (!o.isAsc())
           sb.append(" desc");
       }
@@ -1018,7 +1023,7 @@ public class ArangoDBStatement implements Statement {
             sb.append(modifyColumnName((Column) si.getExpression()).replaceAll("\"", ""));
           sb.append(":");
         }
-        sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm));
+        sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
         // Search ColInfo for ResultMetaData
         if (si.getExpression() instanceof Column) {
           Column column = (Column) si.getExpression();
@@ -1055,7 +1060,7 @@ public class ArangoDBStatement implements Statement {
           else
             sb.append(modifyColumnName(col).replaceAll("\"", ""));
           sb.append(":");
-          sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm));
+          sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
           // Search ColInfo for ResultMetaData
           if (si.getExpression() instanceof Column) {
             String[] tn = col.getTable().toString().split("\\.");
@@ -1093,17 +1098,17 @@ public class ArangoDBStatement implements Statement {
     return tabName;
   }
 
-  private String appendExpression(Expression exp, HashMap<String, String> lstTabAlias, String dftAlias, AppendOption appendOpt, boolean withGroup, StructureManager sm) {
+  private String appendExpression(Expression exp, HashMap<String, String> lstTabAlias, String dftAlias, AppendOption appendOpt, boolean withGroup, StructureManager sm, List<String> lstRefAlias) {
     if (exp instanceof Column) {
-      return getSqlColumn((Column) exp, lstTabAlias, dftAlias, appendOpt);
+      return getSqlColumn((Column) exp, lstTabAlias, dftAlias, appendOpt, lstRefAlias);
     } else if (exp instanceof AndExpression) {
       AndExpression and = (AndExpression) exp;
-      return "(" + appendExpression(and.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + " && " +
-        appendExpression(and.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + ")";
+      return "(" + appendExpression(and.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + " && " +
+        appendExpression(and.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + ")";
     } else if (exp instanceof OrExpression) {
       OrExpression or = (OrExpression) exp;
-      return "(" + appendExpression(or.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + " || " +
-        appendExpression(or.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + ")";
+      return "(" + appendExpression(or.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + " || " +
+        appendExpression(or.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + ")";
     } else if (exp instanceof ComparisonOperator) {
       ComparisonOperator comp = (ComparisonOperator) exp;
       String op = comp.getStringExpression();
@@ -1119,7 +1124,7 @@ public class ArangoDBStatement implements Statement {
           for (SchemaNode sn : cs.getProperties()) {
             if (sn.getName().equals(colName)) {
               if (sn.getDataType().get(0) == Types.BOOLEAN) {
-                return appendExpression(comp.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + op +
+                return appendExpression(comp.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + op +
                   (comp.getRightExpression().toString().equals("1") ? "true" : "false");
               }
               break;
@@ -1127,17 +1132,17 @@ public class ArangoDBStatement implements Statement {
           }
         }
       }
-      return appendExpression(comp.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + op +
-        appendExpression(comp.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
+      return appendExpression(comp.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + op +
+        appendExpression(comp.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
     } else if (exp instanceof LikeExpression) {
       LikeExpression like = (LikeExpression) exp;
-      return (like.isNot() ? "!" : "") + "LIKE(" + appendExpression(like.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + "," +
-        appendExpression(like.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + ")";
+      return (like.isNot() ? "!" : "") + "LIKE(" + appendExpression(like.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + "," +
+        appendExpression(like.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + ")";
     } else if (exp instanceof Between) {
       Between between = (Between) exp;
-      String col = appendExpression(between.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
-      String from = appendExpression(between.getBetweenExpressionStart(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
-      String to = appendExpression(between.getBetweenExpressionEnd(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
+      String col = appendExpression(between.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
+      String from = appendExpression(between.getBetweenExpressionStart(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
+      String to = appendExpression(between.getBetweenExpressionEnd(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
       // If the comparison is designed exclusively for one day, then set the time to the end of the day.
       if (from.equals(to) && between.getBetweenExpressionEnd() instanceof Function &&
         ((Function) between.getBetweenExpressionEnd()).getName().equalsIgnoreCase("TIMESTAMP") &&
@@ -1170,20 +1175,20 @@ public class ArangoDBStatement implements Statement {
               first = false;
             else
               sb.append(",");
-            sb.append(appendExpression((Expression) expItem, lstTabAlias, dftAlias, appendOpt, withGroup, sm));
+            sb.append(appendExpression((Expression) expItem, lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias));
           }
         }
         sb.append("]");
         inValue = sb.toString();
       } else if (in.getRightExpression() instanceof ParenthesedSelect) {
-        String subSql = appendExpression(in.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
+        String subSql = appendExpression(in.getRightExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
         inValue = "(" + subSql.substring(0, subSql.length() - 3) + ")";
       } else
         inValue = "[]";
-      return appendExpression(in.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm) + (in.isNot() ? " NOT " : "") + " IN " + inValue;
+      return appendExpression(in.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + (in.isNot() ? " NOT " : "") + " IN " + inValue;
     } else if (exp instanceof IsNullExpression) {
       IsNullExpression isNull = (IsNullExpression) exp;
-      return (isNull.isNot() ? "" : "!") + appendExpression(isNull.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
+      return (isNull.isNot() ? "" : "!") + appendExpression(isNull.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
     } else if (exp instanceof StringValue) {
       StringValue value = (StringValue) exp;
       return "'" + value.getValue() + "'";
@@ -1229,7 +1234,7 @@ public class ArangoDBStatement implements Statement {
           appendOpt.aggregate.append(",");
         String expFunc = "";
         if (func.getParameters() != null && !func.getParameters().isEmpty() && !(func.getParameters().get(0) instanceof AllColumns))
-          expFunc = appendExpression(func.getParameters().get(0), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
+          expFunc = appendExpression(func.getParameters().get(0), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
         appendOpt.aggregate.append(ag).append("=").append(func.getName()).append("(").append(expFunc).append(")");
         return ag;
       }
@@ -1238,7 +1243,7 @@ public class ArangoDBStatement implements Statement {
       f.append("(");
       List<String> lstParam = new ArrayList<>();
       for (Expression para : func.getParameters()) {
-        lstParam.add(appendExpression(para, lstTabAlias, dftAlias, appendOpt, withGroup, sm));
+        lstParam.add(appendExpression(para, lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias));
       }
       if (aqlFunc != null && aqlFunc.parameterOrder != null) {
         List<String> lstParamOrdered = new ArrayList<>();
@@ -1264,7 +1269,7 @@ public class ArangoDBStatement implements Statement {
       return "@" + ((UserVariable) exp).getName();
     } else if (exp instanceof Parenthesis) {
       Parenthesis par = (Parenthesis) exp;
-      return appendExpression(par.getExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm);
+      return appendExpression(par.getExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";
@@ -1282,7 +1287,7 @@ public class ArangoDBStatement implements Statement {
     return "'" + d + "'";
   }
 
-  private String getSqlColumn(Column col, HashMap<String, String> lstTabAlias, String dftAlias, AppendOption appendOpt) {
+  private String getSqlColumn(Column col, HashMap<String, String> lstTabAlias, String dftAlias, AppendOption appendOpt, List<String> lstRefAlias) {
     String tab;
     if (col.getTable() != null) {
       tab = lstTabAlias.get(col.getTable().toString());
@@ -1310,6 +1315,8 @@ public class ArangoDBStatement implements Statement {
       }
     } else
       tab = dftAlias;
+    if (lstRefAlias != null && lstRefAlias.contains(tab) && "entryValue".equals(col.getColumnName()))
+      return tab;
     return (tab != null ? tab + "." : "") + modifyColumnName(col).replaceAll("\"", "");
   }
 

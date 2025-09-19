@@ -8,6 +8,7 @@ public class SchemaNode {
   private boolean nullable = false;
   private List<Integer> dataType;
   private List<String> references = null;                  // When dataType == Types.STRUCT
+  private boolean simpleReferences = false;
   private List<SchemaNode> properties = null;
 
   private List<Object> enumValues = null;
@@ -58,5 +59,13 @@ public class SchemaNode {
 
   public void setProperties(List<SchemaNode> properties) {
     this.properties = properties;
+  }
+
+  public boolean isSimpleReferences() {
+    return simpleReferences;
+  }
+
+  public void setSimpleReferences(boolean simpleReferences) {
+    this.simpleReferences = simpleReferences;
   }
 }

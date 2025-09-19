@@ -17,6 +17,7 @@ public class StructureManager {
   int refreshTime = 180;
 
   boolean arrayCollectionEnabled = false;
+  boolean arraySimpleValueEnabled = false;
   Map<String, SchemaVirtual> virtualCollections = new HashMap<>();
 
   Map<String, CollectionSchema> schemaMap = new HashMap<>();
@@ -39,7 +40,10 @@ public class StructureManager {
 
   public void setArrayCollectionEnabled(boolean arrayCollectionEnabled) {
     this.arrayCollectionEnabled = arrayCollectionEnabled;
-    if (arrayCollectionEnabled) {
+  }
+
+  public void init() {
+    if (arrayCollectionEnabled || arraySimpleValueEnabled) {
       try {
         ArangoCursor<BaseDocument> cursor = connection.getDatabase().query("FOR c IN COLLECTIONS() FILTER !STARTS_WITH(c.name, '_') RETURN {name: c.name, schema: SCHEMA_GET(c.name)}", BaseDocument.class);
         if (cursor != null) {
@@ -58,7 +62,7 @@ public class StructureManager {
                 for (SchemaNode sn : schema.getProperties()) {
                   if (sn.getDataType().contains(Types.ARRAY) && sn.getReferences() != null && !sn.getReferences().isEmpty()) {
                     String virtualCollection = collection + "_" + sn.getName();
-                    virtualCollections.put(virtualCollection, new SchemaVirtual(collection, virtualCollection, sn.getName()));
+                    virtualCollections.put(virtualCollection, new SchemaVirtual(collection, virtualCollection, sn.getName(), sn.isSimpleReferences()));
                   }
                 }
               }
@@ -69,6 +73,14 @@ public class StructureManager {
         e.printStackTrace();
       }
     }
+  }
+
+  public boolean isArraySimpleValueEnabled() {
+    return arraySimpleValueEnabled;
+  }
+
+  public void setArraySimpleValueEnabled(boolean arraySimpleValueEnabled) {
+    this.arraySimpleValueEnabled = arraySimpleValueEnabled;
   }
 
   public CollectionSchema getSchema(String collection) {
@@ -189,7 +201,12 @@ public class StructureManager {
             dtList.add(dT == Types.ARRAY ? dT : Types.STRUCT);
             refList.add(mRef.substring(mRef.lastIndexOf('/') + 1));
           } else {
-            dtList.add(findDataType(mDt, mDf, mMultipleOf));
+            int dT = findDataType(mDt, mDf, mMultipleOf);
+            dtList.add(dT);
+            if (dT == Types.ARRAY && arraySimpleValueEnabled && mItems != null) {
+              refList.add(mItems.get("type").toString());
+              node.setSimpleReferences(true);
+            }
           }
         }
         if (!dtList.isEmpty())

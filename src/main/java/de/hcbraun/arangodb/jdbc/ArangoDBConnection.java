@@ -25,6 +25,7 @@ public class ArangoDBConnection implements Connection {
   private HashMap<String, String> lstAliasCollection = new HashMap<>();
   private StructureManager structureManager = null;
   private boolean arrayCollectionEnabled = false;
+  private boolean arraySimpleValueEnabled = false;
   private IModifySQLStatement modifySqlStatement = null;
   private IModifyAQL modifyAql = null;
 
@@ -65,6 +66,9 @@ public class ArangoDBConnection implements Connection {
       } else if("arrayCollectionEnabled".equals(key)) {
         arrayCollectionEnabled = "true".equalsIgnoreCase(lstPara.get(key));
         logger.info("Array-Collection-Enabled: {}", arrayCollectionEnabled);
+      } else if("arraySimpleValueEnabled".equals(key)) {
+        arraySimpleValueEnabled = "true".equalsIgnoreCase(lstPara.get(key));
+        logger.info("Array-Collection-Enabled: {}", arraySimpleValueEnabled);
       } else if("modifySqlStatement".equals(key)) {
         try {
           Class<?> modifySqlStatementClass = Class.forName(lstPara.get(key));
@@ -97,6 +101,8 @@ public class ArangoDBConnection implements Connection {
       logger.info("Connection use separatorStructColumn: " + separatorStructColumn);
     structureManager = new StructureManager(this);
     structureManager.setArrayCollectionEnabled(arrayCollectionEnabled);
+    structureManager.setArraySimpleValueEnabled(arraySimpleValueEnabled);
+    structureManager.init();
   }
 
   protected String getUserName() {

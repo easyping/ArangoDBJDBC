@@ -17,6 +17,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   private final Logger logger = LoggerFactory.getLogger(ArangoDBMetaData.class);
   private String schema = "adbdbo";
   private String separatorStructColumn = null;
+  private List<String> simpleDatatypes = Arrays.asList("boolean", "number", "string", "integer");
 
   ArangoDBConnection con;
 
@@ -826,11 +827,16 @@ public class ArangoDBMetaData implements DatabaseMetaData {
             .orElse(null);
           if (node != null) {
             cols = new ArrayList<>();
-            addSchemaRow(new SchemaNode("_key"), "", cols, 0, tableNamePattern, schema, Types.STRUCT);
+            addSchemaRow(new SchemaNode("_key"), "", cols, 0, tableNamePattern, schema, Types.VARCHAR);
             for (String ref : node.getReferences()) {
-              SchemaReference sRef = cSchema.getReferences().get(ref);
-              if (sRef != null) {
-                addSchemaColumns(cSchema, sRef.getProperties(), "", cols, 1, tableNamePattern, schema, new ArrayList<String>());
+              if (simpleDatatypes.contains( ref ) ) {
+                addSchemaRow(new SchemaNode("entryValue"), "", cols, 1, tableNamePattern, schema,
+                  ref.equals("boolean") ? Types.BOOLEAN : ref.equals("number") ? Types.DOUBLE : ref.equals("integer") ? Types.INTEGER : Types.VARCHAR);
+              } else {
+                SchemaReference sRef = cSchema.getReferences().get(ref);
+                if (sRef != null) {
+                  addSchemaColumns(cSchema, sRef.getProperties(), "", cols, 1, tableNamePattern, schema, new ArrayList<String>());
+                }
               }
             }
           }

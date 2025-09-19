@@ -4,11 +4,13 @@ public class SchemaVirtual {
   private String collectionName;
   private String collectionVirtual;
   private String columnName;
+  private boolean simpleReferences = false;
 
-  public SchemaVirtual(String collectionName, String collectionVirtual, String columnName) {
+  public SchemaVirtual(String collectionName, String collectionVirtual, String columnName, boolean simpleReferences) {
     this.collectionName = collectionName;
     this.collectionVirtual = collectionVirtual;
     this.columnName = columnName;
+    this.simpleReferences = simpleReferences;
   }
 
   public String getCollectionName() {
@@ -33,5 +35,13 @@ public class SchemaVirtual {
 
   public void setColumnName(String columnName) {
     this.columnName = columnName;
+  }
+
+  public boolean isSimpleReferences() {
+    return simpleReferences;
+  }
+
+  public void setSimpleReferences(boolean simpleReferences) {
+    this.simpleReferences = simpleReferences;
   }
 }
