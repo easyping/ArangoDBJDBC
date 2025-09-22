@@ -52,11 +52,17 @@ e.g. collectionAlias=Order:aOrder
 
 #### Option arrayCollectionEnabled
 
-If the arrayCollectionEnabled option is set to true. Virtual collections are added for all object array properties in the main level of a collection.  
+If the arrayCollectionEnabled option is set to true. Virtual collections are added for all object array properties in the main level of a collection.
+A virtual collection name is created from the collection name and the property name.  
+e.g. Order.products  
+Virtual collection name: Order_products 
   
 #### Option arraySimpleValueEnabled
 
-If the arraySimpleValueEnabled option is set to true. Virtual collections are added for all simple array properties in the main level of a collection.  
+If the arraySimpleValueEnabled option is set to true. Virtual collections are added for all simple array properties in the main level of a collection.
+A virtual collection name is created from the collection name and the property name.  
+e.g. Order.products  
+Virtual collection name: Order_products
   
 #### Option modifySqlStatement
 
