@@ -643,15 +643,18 @@ public class ArangoDBStatement implements Statement {
         if (lstRCols != null && !lstRCols.isEmpty()) {
           qi.rsmd = new ArangoDBResultSetMetaData(lstRCols);
         } else {
-          String r = q.substring(q.toLowerCase().lastIndexOf(" return "));
-          q = q.substring(0, q.toLowerCase().lastIndexOf(" return ")) + " LIMIT 1 " + r;
-          if (database != null) {
-            ArangoCursor<BaseDocument> cur = database.query(q, BaseDocument.class, parameters);
-            if (cur.hasNext())
-              qi.rsmd = new ArangoDBResultSetMetaData(cur.next());
-            else
-              qi.rsmd = null;
-          }
+          if (q.toLowerCase().lastIndexOf(" return ") >= 0) {
+            String r = q.substring(q.toLowerCase().lastIndexOf(" return "));
+            q = q.substring(0, q.toLowerCase().lastIndexOf(" return ")) + " LIMIT 1 " + r;
+            if (database != null) {
+              ArangoCursor<BaseDocument> cur = database.query(q, BaseDocument.class, parameters);
+              if (cur.hasNext())
+                qi.rsmd = new ArangoDBResultSetMetaData(cur.next());
+              else
+                qi.rsmd = null;
+            }
+          } else
+            qi.rsmd = null;
         }
       } else
         qi.rsmd = null;
@@ -664,7 +667,23 @@ public class ArangoDBStatement implements Statement {
     StringBuilder sb = new StringBuilder("FOR ");
     String alias, dftAlias, dftTabName;
     Table fromItem = (Table) plain.getFromItem();
-    if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
+    if (fromItem == null) {
+      if (plain.getSelectItems() != null && !plain.getSelectItems().isEmpty()) {
+        sb = new StringBuilder("RETURN ");
+        if (plain.getSelectItems().size() > 1)
+          sb.append("{");
+        for(int i = 0; i < plain.getSelectItems().size(); i++) {
+          SelectItem si = plain.getSelectItems().get(i);
+          if (i > 0)
+            sb.append(",");
+          sb.append(si.toString());
+        }
+        if (plain.getSelectItems().size() > 1)
+          sb.append("}");
+        return sb.toString();
+      }
+      return "";
+    } else if (fromItem.getAlias() != null && fromItem.getAlias().getName() != null &&
       !fromItem.getAlias().getName().equals(fromItem.getName()))
       alias = fromItem.getAlias().getName();
     else

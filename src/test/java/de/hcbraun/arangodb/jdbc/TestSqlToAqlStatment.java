@@ -246,4 +246,10 @@ public class TestSqlToAqlStatment {
         "group by Address.country order by Address_country", null).aql);
   }
 
+  @Test
+  public void testOnlySelect1() {
+    assertEquals("RETURN 1",
+      (new ArangoDBStatement(null)).getAQL("select 1", null).aql);
+  }
+
 }
