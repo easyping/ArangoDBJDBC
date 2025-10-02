@@ -1311,6 +1311,17 @@ public class ArangoDBStatement implements Statement {
         toFunc = "TO_BOOL";
       }
       return toFunc + "(" + appendExpression(cast.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + ")";
+    } else if (exp instanceof CaseExpression) {
+      CaseExpression caseExp = (CaseExpression) exp;
+      StringBuilder sb = new StringBuilder();
+      for (WhenClause wc : caseExp.getWhenClauses()) {
+        sb.append(appendExpression(wc.getWhenExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias));
+        sb.append(" ? ");
+        sb.append(appendExpression(wc.getThenExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias));
+        sb.append(" : ");
+      }
+      sb.append(appendExpression(caseExp.getElseExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias));
+      return sb.toString();
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";

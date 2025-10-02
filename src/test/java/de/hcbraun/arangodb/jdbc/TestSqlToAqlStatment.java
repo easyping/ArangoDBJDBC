@@ -260,4 +260,16 @@ public class TestSqlToAqlStatment {
         "from AVC_Att AVC_Att group by AVC_Att.name order by AVC_Att_name", null).aql);
   }
 
+  @Test
+  public void testSelectWithCase() {
+    assertEquals("FOR c1 IN OrderDetails RETURN {OrderID:c1.OrderID,Quantity:c1.Quantity,QuantityText:c1.Quantity>30 ? 'The quantity is greater than 30' : c1.Quantity==30 ? 'The quantity is 30' : 'The quantity is under 30'}",
+      (new ArangoDBStatement(null)).getAQL("SELECT OrderID, Quantity, " +
+        "CASE " +
+        "    WHEN Quantity > 30 THEN 'The quantity is greater than 30' " +
+        "    WHEN Quantity = 30 THEN 'The quantity is 30' " +
+        "    ELSE 'The quantity is under 30' " +
+        "END AS QuantityText " +
+        "FROM OrderDetails", null).aql);
+  }
+
 }
