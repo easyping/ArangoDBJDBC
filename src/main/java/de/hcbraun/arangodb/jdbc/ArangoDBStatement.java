@@ -1289,6 +1289,18 @@ public class ArangoDBStatement implements Statement {
     } else if (exp instanceof Parenthesis) {
       Parenthesis par = (Parenthesis) exp;
       return appendExpression(par.getExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias);
+    } else if (exp instanceof CastExpression) {
+      CastExpression cast = (CastExpression) exp;
+      String dt = cast.getColDataType().getDataType();
+      String toFunc = "TO_STRING";
+      if (dt.equalsIgnoreCase("numeric") || dt.equalsIgnoreCase("int") || dt.equalsIgnoreCase("integer") ||
+        dt.equalsIgnoreCase("decimal") || dt.equalsIgnoreCase("dec") || dt.equalsIgnoreCase("smallint") ||
+        dt.equalsIgnoreCase("double") || dt.equalsIgnoreCase("float") || dt.equalsIgnoreCase("bit")) {
+        toFunc = "TO_NUMBER";
+      } else if (dt.equalsIgnoreCase("bool") || dt.equalsIgnoreCase("boolean")) {
+        toFunc = "TO_BOOL";
+      }
+      return toFunc + "(" + appendExpression(cast.getLeftExpression(), lstTabAlias, dftAlias, appendOpt, withGroup, sm, lstRefAlias) + ")";
     } else
       System.err.println("Not implement SQL Expression : " + exp.getClass().toString());
     return "";

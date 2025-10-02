@@ -252,4 +252,12 @@ public class TestSqlToAqlStatment {
       (new ArangoDBStatement(null)).getAQL("select 1", null).aql);
   }
 
+  @Test
+  public void testSelectWithCast() {
+    assertEquals("FOR c1 IN AVC_Att COLLECT g0=c1.name AGGREGATE ag1=Sum(TO_NUMBER(c1.value)) SORT g0 RETURN {AVC_Att_name:g0,Sum_Decimal_AVC_Att_value:ag1}",
+      (new ArangoDBStatement(null)).getAQL("select AVC_Att.name as AVC_Att_name, " +
+        "Sum(cast(AVC_Att.value as numeric(20, 10))) as Sum_Decimal_AVC_Att_value " +
+        "from AVC_Att AVC_Att group by AVC_Att.name order by AVC_Att_name", null).aql);
+  }
+
 }
