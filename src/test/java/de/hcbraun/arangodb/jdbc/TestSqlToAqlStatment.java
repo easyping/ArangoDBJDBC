@@ -248,7 +248,7 @@ public class TestSqlToAqlStatment {
 
   @Test
   public void testOnlySelect1() {
-    assertEquals("RETURN 1",
+    assertEquals("RETURN {c0:1}",
       (new ArangoDBStatement(null)).getAQL("select 1", null).aql);
   }
 

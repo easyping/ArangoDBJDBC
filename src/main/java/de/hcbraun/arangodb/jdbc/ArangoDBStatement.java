@@ -669,17 +669,27 @@ public class ArangoDBStatement implements Statement {
     Table fromItem = (Table) plain.getFromItem();
     if (fromItem == null) {
       if (plain.getSelectItems() != null && !plain.getSelectItems().isEmpty()) {
-        sb = new StringBuilder("RETURN ");
-        if (plain.getSelectItems().size() > 1)
-          sb.append("{");
+        sb = new StringBuilder("RETURN {");
         for(int i = 0; i < plain.getSelectItems().size(); i++) {
           SelectItem si = plain.getSelectItems().get(i);
           if (i > 0)
             sb.append(",");
+          sb.append("c").append(i).append(":");
           sb.append(si.toString());
+          if (si.getExpression() instanceof LongValue)
+            lstRCols.add(new ColInfo("c" + i, "INTEGER", Types.INTEGER, Integer.class.getName()));
+          else if (si.getExpression() instanceof DoubleValue)
+            lstRCols.add(new ColInfo("c" + i, "DOUBLE", Types.DOUBLE, Double.class.getName()));
+          else if (si.getExpression() instanceof DateValue)
+            lstRCols.add(new ColInfo("c" + i, "DATE", Types.DATE, Date.class.getName()));
+          else if (si.getExpression() instanceof TimestampValue)
+            lstRCols.add(new ColInfo("c" + i, "TIMESTAMP", Types.TIMESTAMP, Timestamp.class.getName()));
+          else if (si.getExpression() instanceof TimeValue)
+            lstRCols.add(new ColInfo("c" + i, "TIME", Types.TIME, Time.class.getName()));
+          else
+            lstRCols.add(new ColInfo("c" + i, "NVARCHAR", Types.NVARCHAR, String.class.getName()));
         }
-        if (plain.getSelectItems().size() > 1)
-          sb.append("}");
+        sb.append("}");
         return sb.toString();
       }
       return "";
