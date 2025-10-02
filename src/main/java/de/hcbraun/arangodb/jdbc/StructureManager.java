@@ -86,6 +86,8 @@ public class StructureManager {
   public CollectionSchema getSchema(String collection) {
     CollectionSchema schema = schemaMap.get(collection);
     if (schema == null || (schema.getNextRefresh() > 0 && schema.getNextRefresh() < System.currentTimeMillis())) {
+      if (virtualCollections.containsKey(collection))
+        return null;
       try {
         String col = connection.getAliasCollection(collection);
         ArangoCursor<BaseDocument> cursor = connection.getDatabase().query("RETURN SCHEMA_GET('" + col + "')", BaseDocument.class);
