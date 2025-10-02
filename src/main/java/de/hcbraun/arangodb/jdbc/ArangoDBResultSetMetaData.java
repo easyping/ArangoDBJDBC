@@ -19,7 +19,7 @@ public class ArangoDBResultSetMetaData implements ResultSetMetaData {
   private final static String[] DTYP_SHORT = {"s", "i", "b", "d", "f", "bd", "dt", "t", "ts"};
   private final static String[] DTYP_LONG = {"string", "integer", "boolean", "double", "float", "bigdecimal",
     "date", "time", "timestamp"};
-  private final static int[] DTYP_TYPES = {Types.VARCHAR, Types.INTEGER, Types.BOOLEAN, Types.DOUBLE, Types.FLOAT,
+  private final static int[] DTYP_TYPES = {Types.NVARCHAR, Types.INTEGER, Types.BOOLEAN, Types.DOUBLE, Types.FLOAT,
     Types.DECIMAL, Types.DATE, Types.TIME, Types.TIMESTAMP};
   private final static String[] DTYP_TYPENAMES = {"NVARCHAR", "INTEGER", "BOOLEAN", "DOUBLE", "FLOAT",
     "DECIMAL", "DATE", "TIME", "TIMESTAMP"};
@@ -35,9 +35,9 @@ public class ArangoDBResultSetMetaData implements ResultSetMetaData {
   protected ArangoDBResultSetMetaData(BaseDocument doc) {
     cols = new ArrayList<>();
     if (doc.getId() != null)
-      cols.add(new ColInfo("_id", "NVARCHAR", Types.VARCHAR, String.class.getName()));
+      cols.add(new ColInfo("_id", "NVARCHAR", Types.NVARCHAR, String.class.getName()));
     if (doc.getKey() != null)
-      cols.add(new ColInfo("_key", "NVARCHAR", Types.VARCHAR, String.class.getName()));
+      cols.add(new ColInfo("_key", "NVARCHAR", Types.NVARCHAR, String.class.getName()));
     analyseColMap(doc.getProperties(), "");
   }
 
@@ -50,9 +50,9 @@ public class ArangoDBResultSetMetaData implements ResultSetMetaData {
       Object obj = map.get(key);
       String colName = prefix + key;
       if (obj == null)
-        cols.add(new ColInfo(colName, "", Types.VARCHAR, String.class.getName()));
+        cols.add(new ColInfo(colName, "", Types.NVARCHAR, String.class.getName()));
       else if (obj instanceof String)
-        cols.add(new ColInfo(colName, "NVARCHAR", Types.VARCHAR, String.class.getName()));
+        cols.add(new ColInfo(colName, "NVARCHAR", Types.NVARCHAR, String.class.getName()));
       else if (obj instanceof Number)
         cols.add(new ColInfo(colName, "DOUBLE", Types.DOUBLE, Double.class.getName()));
       else if (obj instanceof Boolean)
@@ -60,9 +60,9 @@ public class ArangoDBResultSetMetaData implements ResultSetMetaData {
       else if (obj instanceof List) {
         Object uObj = ((List<?>) obj).get(0);
         if (uObj == null)
-          cols.add(new ColInfo(colName, "", Types.VARCHAR, String.class.getName()));
+          cols.add(new ColInfo(colName, "", Types.NVARCHAR, String.class.getName()));
         else if (uObj instanceof String)
-          cols.add(new ColInfo(colName, "NVARCHAR", Types.VARCHAR, String.class.getName()));
+          cols.add(new ColInfo(colName, "NVARCHAR", Types.NVARCHAR, String.class.getName()));
         else if (uObj instanceof Number)
           cols.add(new ColInfo(colName, "DOUBLE", Types.DOUBLE, Double.class.getName()));
         else if (uObj instanceof Boolean)
@@ -271,7 +271,7 @@ public class ArangoDBResultSetMetaData implements ResultSetMetaData {
               i++;
             }
             if (typ == -1) {
-              typ = Types.VARCHAR;
+              typ = Types.NVARCHAR;
               typNam = DTYP_TYPENAMES[0];
               clNam = DTYP_CLASSNAME[0];
             }

@@ -328,7 +328,7 @@ public class StructureManager {
 
     CollectionSchema sm = getSchema(collection);
     if (sm != null) {
-      ColInfo ci = new ColInfo("_key", "NVARCHAR", Types.VARCHAR, String.class.getName());
+      ColInfo ci = new ColInfo("_key", "NVARCHAR", Types.NVARCHAR, String.class.getName());
       ci.tabName = sm.getAliasName();
       cols.put("_key", ci);
       addRefCollInfo(sm, reference, "", cols);

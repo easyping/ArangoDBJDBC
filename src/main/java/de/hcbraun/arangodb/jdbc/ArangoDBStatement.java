@@ -858,12 +858,12 @@ public class ArangoDBStatement implements Statement {
           String ag = appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference);
           lstColAggAlias.put(si.getAlias() != null ? si.getAlias().getName() : fName, ag);
           if ("COUNT".equals(fName))
-            lstAggCols.add(new ColInfo(si.getAlias() != null ? si.getAlias().getName() : fName, "Integer", Types.INTEGER, Integer.class.toString()));
+            lstAggCols.add(new ColInfo(si.getAlias() != null ? si.getAlias().getName() : fName, "INTEGER", Types.INTEGER, Integer.class.toString()));
           else
-            lstAggCols.add(new ColInfo(si.getAlias().getName(), "Double", Types.DOUBLE, Double.class.toString()));
+            lstAggCols.add(new ColInfo(si.getAlias().getName(), "DOUBLE", Types.DOUBLE, Double.class.toString()));
         }
       } else if (si.getExpression() instanceof Column)
-        lstAggCols.add(new ColInfo(((Column) si.getExpression()).getColumnName(), "String", Types.VARCHAR, String.class.toString()));
+        lstAggCols.add(new ColInfo(((Column) si.getExpression()).getColumnName(), "NVARCHAR", Types.NVARCHAR, String.class.toString()));
     }
     if (plain.getWhere() != null) {
       sb.append(" FILTER ");
@@ -1060,7 +1060,7 @@ public class ArangoDBStatement implements Statement {
           if (tabCols != null) {
             ColInfo ci = tabCols.get(modifyColumnName(column));
             if (ci == null)
-              ci = new ColInfo(modifyColumnName(column), "NVARCHAR", Types.VARCHAR, String.class.getName());
+              ci = new ColInfo(modifyColumnName(column), "NVARCHAR", Types.NVARCHAR, String.class.getName());
             lstRCols.add(ci);
           }
         }
@@ -1101,7 +1101,7 @@ public class ArangoDBStatement implements Statement {
               sbCol.append(modifyColumnName(col));
               ColInfo ci = tabCols.get(sbCol.toString());
               if (ci == null)
-                ci = new ColInfo(modifyColumnName(col), "NVARCHAR", Types.VARCHAR, String.class.getName());
+                ci = new ColInfo(modifyColumnName(col), "NVARCHAR", Types.NVARCHAR, String.class.getName());
               lstRCols.add(ci);
             }
           }
