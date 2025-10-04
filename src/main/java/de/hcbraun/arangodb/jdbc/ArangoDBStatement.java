@@ -674,20 +674,23 @@ public class ArangoDBStatement implements Statement {
           SelectItem si = plain.getSelectItems().get(i);
           if (i > 0)
             sb.append(",");
-          sb.append("c").append(i).append(":");
-          sb.append(si.toString());
+          alias = "c" + i;
+          if (si.getAlias() != null && si.getAlias().getName() != null)
+            alias = si.getAlias().getName();
+          sb.append(alias).append(":");
+          sb.append(si.getExpression().toString());
           if (si.getExpression() instanceof LongValue)
-            lstRCols.add(new ColInfo("c" + i, "INTEGER", Types.INTEGER, Integer.class.getName()));
+            lstRCols.add(new ColInfo(alias, "INTEGER", Types.INTEGER, Integer.class.getName()));
           else if (si.getExpression() instanceof DoubleValue)
-            lstRCols.add(new ColInfo("c" + i, "DOUBLE", Types.DOUBLE, Double.class.getName()));
+            lstRCols.add(new ColInfo(alias, "DOUBLE", Types.DOUBLE, Double.class.getName()));
           else if (si.getExpression() instanceof DateValue)
-            lstRCols.add(new ColInfo("c" + i, "DATE", Types.DATE, Date.class.getName()));
+            lstRCols.add(new ColInfo(alias, "DATE", Types.DATE, Date.class.getName()));
           else if (si.getExpression() instanceof TimestampValue)
-            lstRCols.add(new ColInfo("c" + i, "TIMESTAMP", Types.TIMESTAMP, Timestamp.class.getName()));
+            lstRCols.add(new ColInfo(alias, "TIMESTAMP", Types.TIMESTAMP, Timestamp.class.getName()));
           else if (si.getExpression() instanceof TimeValue)
-            lstRCols.add(new ColInfo("c" + i, "TIME", Types.TIME, Time.class.getName()));
+            lstRCols.add(new ColInfo(alias, "TIME", Types.TIME, Time.class.getName()));
           else
-            lstRCols.add(new ColInfo("c" + i, "NVARCHAR", Types.NVARCHAR, String.class.getName()));
+            lstRCols.add(new ColInfo(alias, "NVARCHAR", Types.NVARCHAR, String.class.getName()));
         }
         sb.append("}");
         return sb.toString();
