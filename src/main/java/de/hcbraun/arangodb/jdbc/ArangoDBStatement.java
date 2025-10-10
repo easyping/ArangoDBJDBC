@@ -660,6 +660,8 @@ public class ArangoDBStatement implements Statement {
         qi.rsmd = null;
     }
     logger.debug("aql: {}", qi.aql);
+    if (connection.isLoggingToSysErr())
+      System.err.println("SQL: " + sql + " => AQL: " + qi.aql);
     return qi;
   }
 

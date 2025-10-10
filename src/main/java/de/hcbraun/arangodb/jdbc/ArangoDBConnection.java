@@ -28,6 +28,7 @@ public class ArangoDBConnection implements Connection {
   private boolean arraySimpleValueEnabled = false;
   private IModifySQLStatement modifySqlStatement = null;
   private IModifyAQL modifyAql = null;
+  private boolean loggingToSysErr = false;
 
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
@@ -88,6 +89,16 @@ public class ArangoDBConnection implements Connection {
             modifyAql = (IModifyAQL)instance;
         } catch (ClassNotFoundException | InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
           logger.error("Modify-Aql: " + lstPara.get(key) + " not found", e);
+        }
+      } else if ("loggingToSysErr".equals(key))
+        loggingToSysErr = "true".equalsIgnoreCase(lstPara.get(key));
+      else if ("showUseLogging".equals(key)) {
+        if ("true".equalsIgnoreCase(lstPara.get(key))) {
+          // Logging-Framework-Info ausgeben
+          System.err.println("=== SLF4J Logging Info ===");
+          System.err.println("Logger Class: " + LoggerFactory.getLogger(ArangoDBConnection.class).getClass().getName());
+          System.err.println("SLF4J Version: " + org.slf4j.Logger.class.getPackage().getImplementationVersion());
+          System.err.println("========================");
         }
       }
     }
@@ -491,4 +502,9 @@ public class ArangoDBConnection implements Connection {
   protected IModifyAQL getModifyAql() {
 	  return modifyAql;
   }
+
+  protected boolean isLoggingToSysErr() {
+    return loggingToSysErr;
+  }
+
 }
