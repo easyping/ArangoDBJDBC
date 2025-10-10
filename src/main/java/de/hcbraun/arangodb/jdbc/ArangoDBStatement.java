@@ -539,6 +539,8 @@ public class ArangoDBStatement implements Statement {
         qi.aql = sb.toString();
       }
     } catch (JSQLParserException e) {
+      if (connection != null && connection.isLoggingToSysErr())
+        System.err.println("SQL: " + sql + " => Parser-Error: " + e.getMessage());
       qi.aql = sql;
       aqlQuery = true;
       // Create list of columns metadata information
