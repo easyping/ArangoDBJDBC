@@ -540,7 +540,7 @@ public class ArangoDBStatement implements Statement {
       }
     } catch (JSQLParserException e) {
       if (connection != null && connection.isLoggingToSysErr())
-        System.err.println("SQL: " + sql + " => Parser-Error: " + e.getMessage());
+        System.err.println(connection.getUserName() + " - SQL: " + sql + " => Parser-Error: " + e.getMessage());
       qi.aql = sql;
       aqlQuery = true;
       // Create list of columns metadata information
@@ -663,7 +663,7 @@ public class ArangoDBStatement implements Statement {
     }
     logger.debug("aql: {}", qi.aql);
     if (connection != null && connection.isLoggingToSysErr())
-      System.err.println("SQL: " + sql + " => AQL: " + qi.aql);
+      System.err.println(connection.getUserName() + " - SQL: " + sql + " => AQL: " + qi.aql);
     return qi;
   }
 
