@@ -7,22 +7,23 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class ArangoDBListResultSet extends ArangoDBResultSet {
 
   private final Logger logger = LoggerFactory.getLogger(ArangoDBListResultSet.class);
 
-  private List<HashMap<String, Object>> lst;
-  private Iterator<HashMap<String, Object>> it = null;
-  private HashMap<String, Object> cur;
+  private List<Map<String, Object>> lst;
+  private Iterator<Map<String, Object>> it = null;
+  private Map<String, Object> cur;
 
-  protected ArangoDBListResultSet(List<HashMap<String, Object>> lst) {
+  protected ArangoDBListResultSet(List<Map<String, Object>> lst) {
     super(null, null, null);
     this.lst = lst;
     logger.debug("Count-Data-Rows: " + lst.size());
   }
 
-  protected ArangoDBListResultSet(List<HashMap<String, Object>> lst, ArangoDBResultSetMetaData rsmd) {
+  protected ArangoDBListResultSet(List<Map<String, Object>> lst, ArangoDBResultSetMetaData rsmd) {
     super(null, null, rsmd);
     this.lst = lst;
     try {

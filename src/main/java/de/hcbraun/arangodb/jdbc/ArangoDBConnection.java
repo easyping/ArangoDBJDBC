@@ -29,6 +29,7 @@ public class ArangoDBConnection implements Connection {
   private IModifySQLStatement modifySqlStatement = null;
   private IModifyAQL modifyAql = null;
   private boolean loggingToSysErr = false;
+  private IChangeMetaData changeMetaData = null;
 
   protected ArangoDBConnection(String host, String port, HashMap<String, String> lstPara) {
     String[] pdb = port.split("/");
@@ -89,6 +90,16 @@ public class ArangoDBConnection implements Connection {
             modifyAql = (IModifyAQL)instance;
         } catch (ClassNotFoundException | InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
           logger.error("Modify-Aql: " + lstPara.get(key) + " not found", e);
+        }
+      } else if("changeMetaData".equals(key)) {
+        try {
+          Class<?> changeMetaDataClass = Class.forName(lstPara.get(key));
+          logger.info("Modify-Aql: {}", changeMetaDataClass.getName());
+          Object instance = changeMetaDataClass.getDeclaredConstructor().newInstance();
+          if (instance instanceof IChangeMetaData)
+            changeMetaData = (IChangeMetaData)instance;
+        } catch (ClassNotFoundException | InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+          logger.error("Change meta data: " + lstPara.get(key) + " not found", e);
         }
       } else if ("loggingToSysErr".equals(key))
         loggingToSysErr = "true".equalsIgnoreCase(lstPara.get(key));
@@ -505,6 +516,10 @@ public class ArangoDBConnection implements Connection {
 
   protected boolean isLoggingToSysErr() {
     return loggingToSysErr;
+  }
+
+  protected IChangeMetaData getChangeMetaData() {
+    return changeMetaData;
   }
 
 }

@@ -757,6 +757,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         lst.addAll(con.getStructureManager().getVirtualCollections().keySet());
       }
       lst.sort(Comparator.naturalOrder());
+      if (con != null && con.getChangeMetaData() != null)
+        con.getChangeMetaData().changeTableList(con, lst);
       return new ArangoDBCollectionResultSet(lst, schema, con);
     }
 
@@ -766,9 +768,9 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getSchemas() throws SQLException {
     logger.debug("getSchemas " + (schema != null ? schema : ""));
-    ArrayList<HashMap<String, Object>> types = new ArrayList<>();
+    ArrayList<Map<String, Object>> types = new ArrayList<>();
     if (schema != null) {
-      HashMap<String, Object> s = new HashMap<>();
+      Map<String, Object> s = new HashMap<>();
       s.put("TABLE_SCHEM", schema);
       s.put("TABLE_CATALOG", null);
       types.add(s);
@@ -785,8 +787,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getTableTypes() throws SQLException {
     logger.debug("getTableTypes");
-    ArrayList<HashMap<String, Object>> types = new ArrayList<>();
-    HashMap<String, Object> row = new HashMap<>();
+    ArrayList<Map<String, Object>> types = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>();
     row.put("TABLE_TYPE", "TABLE");
     types.add(row);
     return new ArangoDBListResultSet(types, new ArangoDBResultSetMetaData("// cols: TABLE_TYPE:s"));
@@ -796,7 +798,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
     logger.debug("getColumns: " + catalog + " / " + schemaPattern + " / " + tableNamePattern + " / " + columnNamePattern);
 
-    ArrayList<HashMap<String, Object>> cols = null;
+    ArrayList<Map<String, Object>> cols = null;
     if ("%".equals(tableNamePattern)) {
       try {
         ArangoCursor<BaseDocument> cursor = con.getDatabase().query("FOR c IN COLLECTIONS() FILTER !STARTS_WITH(c.name, '_') RETURN {name: c.name, schema: SCHEMA_GET(c.name)}", BaseDocument.class);
@@ -847,8 +849,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         if (cSchema != null) {
           addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableNamePattern, schema, new ArrayList<String>());
           if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
-            ArrayList<HashMap<String, Object>> nCols = new ArrayList<>();
-            for (HashMap<String, Object> row : cols) {
+            ArrayList<Map<String, Object>> nCols = new ArrayList<>();
+            for (Map<String, Object> row : cols) {
               String colName = (String) row.get("COLUMN_NAME");
               if (colName.matches(columnNamePattern))
                 nCols.add(row);
@@ -859,6 +861,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       }
     }
     if (cols != null) {
+      if (con != null && con.getChangeMetaData() != null)
+        con.getChangeMetaData().changeColumnList(con, cols);
       return new ArangoDBListResultSet(cols, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s," +
         "TABLE_NAME:s,COLUMN_NAME:s,DATA_TYPE:i,TYPE_NAME:s,COLUMN_SIZE:i,BUFFER_LENGTH:s,DECIMAL_DIGITS:i,NUM_PREC_RADIX:i," +
         "NULLABLE:i,REMARKS:s,COLUMN_DEF:s,SQL_DATA_TYPE:i,SQL_DATETIME_SUB:i,CHAR_OCTET_LENGTH:i,ORDINAL_POSITION:i," +
@@ -867,7 +871,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     return null;
   }
 
-  private int addSchemaColumns(CollectionSchema cSchema, List<SchemaNode> properties, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema, List<String> lstCalledReferences) {
+  private int addSchemaColumns(CollectionSchema cSchema, List<SchemaNode> properties, String prefix, List<Map<String, Object>> cols, int colPos, String tableName, String schema, List<String> lstCalledReferences) {
     for (SchemaNode node : properties) {
       if (node.getDataType().get(0) == Types.STRUCT &&
         ((node.getProperties() != null && !node.getProperties().isEmpty()) || (node.getReferences() != null && !node.getReferences().isEmpty()))) {
@@ -895,7 +899,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     return colPos;
   }
 
-  private int addSchemaRow(SchemaNode node, String prefix, ArrayList<HashMap<String, Object>> cols, int colPos, String tableName, String schema, int dataType) {
+  private int addSchemaRow(SchemaNode node, String prefix, List<Map<String, Object>> cols, int colPos, String tableName, String schema, int dataType) {
     String colName = prefix + node.getName();
     if (cols.stream().noneMatch(c -> c.get("COLUMN_NAME").equals(colName))) {
       ++colPos;
@@ -932,29 +936,29 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getColumnPrivileges(String s, String s1, String s2, String s3) throws SQLException {
     logger.debug("getColumnPrivileges");
-    return new ArangoDBListResultSet(new ArrayList<HashMap<String, Object>>(), new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s," +
+    return new ArangoDBListResultSet(new ArrayList<>(), new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s," +
       "TABLE_SCHEM:s,TABLE_NAME:s,GRANTOR:s,GRANTEE:s,PRIVILEGE:s,IS_GRANTABLE:s"));
   }
 
   @Override
   public ResultSet getTablePrivileges(String s, String s1, String s2) throws SQLException {
     logger.debug("getTablePrivileges");
-    return new ArangoDBListResultSet(new ArrayList<HashMap<String, Object>>(), new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s," +
+    return new ArangoDBListResultSet(new ArrayList<>(), new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s," +
       "TABLE_SCHEM:s,TABLE_NAME:s,GRANTOR:s,GRANTEE:s,PRIVILEGE:s,IS_GRANTABLE:s"));
   }
 
   @Override
   public ResultSet getBestRowIdentifier(String s, String s1, String s2, int i, boolean b) throws SQLException {
     logger.debug("getBestRowIdentifier");
-    return new ArangoDBListResultSet(new ArrayList<HashMap<String, Object>>(), new ArangoDBResultSetMetaData("// cols: SCOPE:i,COLUMN_NAME:s," +
+    return new ArangoDBListResultSet(new ArrayList<>(), new ArangoDBResultSetMetaData("// cols: SCOPE:i,COLUMN_NAME:s," +
       "DATA_TYPE:i,TYPE_NAME:s,COLUMN_SIZE:i,BUFFER_LENGTH:i,DECIMAL_DIGITS:i,PSEUDO_COLUMN:i"));
   }
 
   @Override
   public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
     logger.debug("getVersionColumns");
-    ArrayList<HashMap<String, Object>> cols = new ArrayList<>();
-    HashMap<String, Object> row = new HashMap<>();
+    ArrayList<Map<String, Object>> cols = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>();
     row.put("COLUMN_NAME", "_rev");
     row.put("DATA_TYPE", Types.VARCHAR);
     row.put("TYPE_NAME", "VARCHAR");
@@ -968,8 +972,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getPrimaryKeys(String queryCatalog, String querySchema, String queryTable) throws SQLException {
     logger.debug("getPrimaryKeys: " + queryCatalog + " / " + querySchema + " / " + queryTable);
-    ArrayList<HashMap<String, Object>> cols = new ArrayList<>();
-    HashMap<String, Object> row = new HashMap<>();
+    ArrayList<Map<String, Object>> cols = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>();
     row.put("TABLE_CAT", null);
     row.put("TABLE_SCHEM", schema);
     row.put("TABLE_NAME", queryTable);
@@ -983,7 +987,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getImportedKeys(String s, String s1, String s2) throws SQLException {
     logger.debug("getImportedKeys");
-    return new ArangoDBListResultSet(new ArrayList<HashMap<String, Object>>(), new ArangoDBResultSetMetaData(
+    return new ArangoDBListResultSet(new ArrayList<>(), new ArangoDBResultSetMetaData(
       "// cols: PKTABLE_CAT:s,PKTABLE_SCHEM:s,PKTABLE_NAME:s,PKCOLUMN_NAME:s,FKTABLE_CAT:s,FKTABLE_SCHEM:s," +
         "FKTABLE_NAME:s,FKCOLUMN_NAME:s,KEY_SEQ:s,UPDATE_RULE:i,DELETE_RULE:i,FK_NAME:s,PK_NAME:s,DEFERRABILITY:i"));
   }
@@ -991,7 +995,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getExportedKeys(String s, String s1, String s2) throws SQLException {
     logger.debug("getExportedKeys");
-    return new ArangoDBListResultSet(new ArrayList<HashMap<String, Object>>(), new ArangoDBResultSetMetaData(
+    return new ArangoDBListResultSet(new ArrayList<>(), new ArangoDBResultSetMetaData(
       "// cols: PKTABLE_CAT:s,PKTABLE_SCHEM:s,PKTABLE_NAME:s,PKCOLUMN_NAME:s,FKTABLE_CAT:s,FKTABLE_SCHEM:s," +
         "FKTABLE_NAME:s,FKCOLUMN_NAME:s,KEY_SEQ:s,UPDATE_RULE:i,DELETE_RULE:i,FK_NAME:s,PK_NAME:s,DEFERRABILITY:i"));
   }
@@ -999,7 +1003,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getCrossReference(String s, String s1, String s2, String s3, String s4, String s5) throws SQLException {
     logger.debug("getCrossReference");
-    return new ArangoDBListResultSet(new ArrayList<HashMap<String, Object>>(), new ArangoDBResultSetMetaData(
+    return new ArangoDBListResultSet(new ArrayList<>(), new ArangoDBResultSetMetaData(
       "// cols: PKTABLE_CAT:s,PKTABLE_SCHEM:s,PKTABLE_NAME:s,PKCOLUMN_NAME:s,FKTABLE_CAT:s,FKTABLE_SCHEM:s," +
         "FKTABLE_NAME:s,FKCOLUMN_NAME:s,KEY_SEQ:s,UPDATE_RULE:i,DELETE_RULE:i,FK_NAME:s,PK_NAME:s,DEFERRABILITY:i"));
   }
@@ -1007,8 +1011,8 @@ public class ArangoDBMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getTypeInfo() throws SQLException {
     logger.debug("getTypeInfo");
-    ArrayList<HashMap<String, Object>> types = new ArrayList<>();
-    HashMap<String, Object> row = new HashMap<>();
+    ArrayList<Map<String, Object>> types = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>();
     row.put("TYPE_NAME", "VARCHAR");
     row.put("DATA_TYPE", Types.VARCHAR);
     row.put("NULLABLE", typeNullable);
@@ -1067,13 +1071,13 @@ public class ArangoDBMetaData implements DatabaseMetaData {
     ArangoCollection col = con.getDatabase().collection(con.getAliasCollection(table));
     Collection<IndexEntity> indexes = col.getIndexes();
 
-    ArrayList<HashMap<String, Object>> idx = new ArrayList<>();
+    ArrayList<Map<String, Object>> idx = new ArrayList<>();
     for (IndexEntity index : indexes) {
       if (unique && !index.getUnique())
         continue;
       int pos = 1;
       for (String field : index.getFields()) {
-        HashMap<String, Object> row = new HashMap<>();
+        Map<String, Object> row = new HashMap<>();
         row.put("TABLE_CAT", null);
         row.put("TABLE_SCHEM", schema);
         row.put("TABLE_NAME", table);
