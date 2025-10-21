@@ -46,6 +46,8 @@ public class ArangoDBResultSet implements ResultSet {
     this.metaData = metaData;
     if (metaData != null)
       this.lstCols = metaData.getColInfo();
+    if (stat != null && stat.connection != null && stat.connection.isLoggingToSysErr())
+      System.err.println(stat.connection.getUserName() + " - ResultSet: " + (cursor != null) + " => Meta: " + (metaData != null));
   }
 
   @Override
@@ -64,6 +66,8 @@ public class ArangoDBResultSet implements ResultSet {
     else
       last = true;
     logger.debug("Next: " + (curDoc != null ? curDoc.getId() : "null"));
+    if (stat != null && stat.connection != null && stat.connection.isLoggingToSysErr())
+      System.err.println(stat.connection.getUserName() + " - Next: " + (curDoc != null ? curDoc.getId() != null ? curDoc.getId() : curDoc.toString() : "null"));
     return curDoc != null;
   }
 
@@ -401,13 +405,30 @@ public class ArangoDBResultSet implements ResultSet {
   @Override
   public Object getObject(int i) throws SQLException {
     logger.debug("getObject - index: " + i);
-    wasNull = false;
+    wasNull = lstCols == null;
     return lstCols != null ? getObject(lstCols.get(i - 1).name) : null;
   }
 
   @Override
   public Object getObject(String s) throws SQLException {
-    return getFieldValue(s);
+    if (lstCols != null) {
+      for (ColInfo ci : lstCols) {
+        if (s.equals(ci.name)) {
+          switch (ci.type) {
+            case Types.DATE:
+              return getDate(s);
+            case Types.TIMESTAMP:
+              return getTimestamp(s);
+            case Types.TIME:
+              return getTime(s);
+          }
+          break;
+        }
+      }
+    }
+    Object obj = getFieldValue(s);
+    wasNull = obj == null;
+    return obj;
   }
 
   @Override
@@ -871,6 +892,8 @@ public class ArangoDBResultSet implements ResultSet {
   public Object getObject(int i, Map<String, Class<?>> map) throws SQLException {
     logger.debug("getObject - index/map");
     // TODO Auto-generated method stub
+    if (stat != null && stat.connection != null && stat.connection.isLoggingToSysErr())
+      System.err.println(stat.connection.getUserName() + " - getObject - index/map");
     return null;
   }
 
@@ -906,6 +929,8 @@ public class ArangoDBResultSet implements ResultSet {
   public Object getObject(String s, Map<String, Class<?>> map) throws SQLException {
     logger.debug("getObject - name/map");
     // TODO Auto-generated method stub
+    if (stat != null && stat.connection != null && stat.connection.isLoggingToSysErr())
+      System.err.println(stat.connection.getUserName() + " - getObject - name/map");
     return null;
   }
 
@@ -1340,8 +1365,10 @@ public class ArangoDBResultSet implements ResultSet {
 
   @Override
   public <T> T getObject(int i, Class<T> aClass) throws SQLException {
-    logger.debug("getObject - name/class");
+    logger.debug("getObject - index/class");
     // TODO Auto-generated method stub
+    if (stat != null && stat.connection != null && stat.connection.isLoggingToSysErr())
+      System.err.println(stat.connection.getUserName() + " - getObject - index/class");
     return null;
   }
 
@@ -1349,6 +1376,8 @@ public class ArangoDBResultSet implements ResultSet {
   public <T> T getObject(String s, Class<T> aClass) throws SQLException {
     logger.debug("getObject - name/class");
     // TODO Auto-generated method stub
+    if (stat != null && stat.connection != null && stat.connection.isLoggingToSysErr())
+      System.err.println(stat.connection.getUserName() + " - getObject - name/class");
     return null;
   }
 
