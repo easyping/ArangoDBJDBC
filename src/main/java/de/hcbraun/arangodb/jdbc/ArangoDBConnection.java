@@ -94,7 +94,7 @@ public class ArangoDBConnection implements Connection {
       } else if("changeMetaData".equals(key)) {
         try {
           Class<?> changeMetaDataClass = Class.forName(lstPara.get(key));
-          logger.info("Modify-Aql: {}", changeMetaDataClass.getName());
+          logger.info("Change meta data: {}", changeMetaDataClass.getName());
           Object instance = changeMetaDataClass.getDeclaredConstructor().newInstance();
           if (instance instanceof IChangeMetaData)
             changeMetaData = (IChangeMetaData)instance;
