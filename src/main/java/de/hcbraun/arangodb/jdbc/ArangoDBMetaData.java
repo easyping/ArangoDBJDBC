@@ -6,6 +6,7 @@ import com.arangodb.ArangoDBException;
 import com.arangodb.entity.BaseDocument;
 import com.arangodb.entity.CollectionEntity;
 import com.arangodb.entity.IndexEntity;
+import com.arangodb.model.CollectionsReadOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -757,10 +758,11 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         lst.addAll(con.getStructureManager().getVirtualCollections().keySet());
       }
       lst.sort(Comparator.naturalOrder());
-      if (con != null && con.getChangeMetaData() != null)
+      if (con.getChangeMetaData() != null)
         con.getChangeMetaData().changeTableList(con, lst);
       return new ArangoDBCollectionResultSet(lst, schema, con);
-    }
+    } else
+      logger.debug("getTables: con is null");
 
     return null;
   }
@@ -848,7 +850,7 @@ public class ArangoDBMetaData implements DatabaseMetaData {
         cols = new ArrayList<>();
         if (cSchema != null) {
           addSchemaColumns(cSchema, cSchema.getProperties(), "", cols, 0, tableNamePattern, schema, new ArrayList<String>());
-          if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
+          if (columnNamePattern != null && !columnNamePattern.isEmpty() && !columnNamePattern.equals("%")) {
             ArrayList<Map<String, Object>> nCols = new ArrayList<>();
             for (Map<String, Object> row : cols) {
               String colName = (String) row.get("COLUMN_NAME");
@@ -861,8 +863,11 @@ public class ArangoDBMetaData implements DatabaseMetaData {
       }
     }
     if (cols != null) {
-      if (con != null && con.getChangeMetaData() != null)
+      if (con != null && con.getChangeMetaData() != null) {
+        logger.debug("getColumns-before: " + cols.size());
         con.getChangeMetaData().changeColumnList(con, cols);
+        logger.debug("getColumns-after: " + cols.size());
+      }
       return new ArangoDBListResultSet(cols, new ArangoDBResultSetMetaData("// cols: TABLE_CAT:s,TABLE_SCHEM:s," +
         "TABLE_NAME:s,COLUMN_NAME:s,DATA_TYPE:i,TYPE_NAME:s,COLUMN_SIZE:i,BUFFER_LENGTH:s,DECIMAL_DIGITS:i,NUM_PREC_RADIX:i," +
         "NULLABLE:i,REMARKS:s,COLUMN_DEF:s,SQL_DATA_TYPE:i,SQL_DATETIME_SUB:i,CHAR_OCTET_LENGTH:i,ORDINAL_POSITION:i," +

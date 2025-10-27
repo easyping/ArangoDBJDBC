@@ -674,7 +674,7 @@ public class ArangoDBStatement implements Statement {
     if (fromItem == null) {
       if (plain.getSelectItems() != null && !plain.getSelectItems().isEmpty()) {
         sb = new StringBuilder("RETURN {");
-        for(int i = 0; i < plain.getSelectItems().size(); i++) {
+        for (int i = 0; i < plain.getSelectItems().size(); i++) {
           SelectItem si = plain.getSelectItems().get(i);
           if (i > 0)
             sb.append(",");
@@ -1056,7 +1056,7 @@ public class ArangoDBStatement implements Statement {
           if (si.getAlias() != null && si.getAlias().getName() != null)
             sb.append(si.getAlias().getName());
           else if (si.getExpression() instanceof Column)
-            sb.append(modifyColumnName((Column) si.getExpression()).replaceAll("\"", ""));
+            sb.append(((Column) si.getExpression()).getColumnName().replaceAll("\"", ""));
           sb.append(":");
         }
         sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
@@ -1067,7 +1067,15 @@ public class ArangoDBStatement implements Statement {
           if (tabCols != null) {
             ColInfo ci = tabCols.get(modifyColumnName(column));
             if (ci == null)
-              ci = new ColInfo(modifyColumnName(column), "NVARCHAR", Types.NVARCHAR, String.class.getName());
+              ci = new ColInfo(column.getColumnName(), "NVARCHAR", Types.NVARCHAR, String.class.getName());
+            else if (separatorStructColumn != null && !separatorStructColumn.isEmpty()) {
+              try {
+                ci = (ColInfo)ci.clone();
+                ci.setName(ci.getName().replaceAll("\\.", separatorStructColumn));
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+            }
             lstRCols.add(ci);
           }
         }
@@ -1094,7 +1102,7 @@ public class ArangoDBStatement implements Statement {
           if (si.getAlias() != null && si.getAlias().getName() != null)
             sb.append(si.getAlias().getName());
           else
-            sb.append(modifyColumnName(col).replaceAll("\"", ""));
+            sb.append(col.getColumnName().replaceAll("\"", ""));
           sb.append(":");
           sb.append(appendExpression(si.getExpression(), lstTabAlias, dftAlias, appendOpt, plain.getGroupBy() != null, sm, lstAliasOfSimpleReference));
           // Search ColInfo for ResultMetaData
@@ -1108,7 +1116,7 @@ public class ArangoDBStatement implements Statement {
               sbCol.append(modifyColumnName(col));
               ColInfo ci = tabCols.get(sbCol.toString());
               if (ci == null)
-                ci = new ColInfo(modifyColumnName(col), "NVARCHAR", Types.NVARCHAR, String.class.getName());
+                ci = new ColInfo(col.getColumnName(), "NVARCHAR", Types.NVARCHAR, String.class.getName());
               lstRCols.add(ci);
             }
           }
@@ -1380,8 +1388,16 @@ public class ArangoDBStatement implements Statement {
   }
 
   private String modifyColumnName(Column col) {
-    if (separatorStructColumn != null)
-      return col.getColumnName().replaceAll(separatorStructColumn, ".");
+    if (separatorStructColumn != null) {
+      String colName = col.getColumnName();
+      if (colName.contains(separatorStructColumn)) {
+        boolean started = (separatorStructColumn.equals("_") && colName.startsWith(separatorStructColumn));
+        colName = colName.replaceAll(separatorStructColumn, ".");
+        if (started)
+          colName = "_" + colName.substring(1);
+      }
+      return colName;
+    }
     return col.getColumnName();
   }
 

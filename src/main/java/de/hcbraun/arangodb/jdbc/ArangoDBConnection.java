@@ -115,6 +115,9 @@ public class ArangoDBConnection implements Connection {
     }
     String databaseName = pdb.length > 1 ? pdb[1] : lstPara.get("database");
 
+    if (changeMetaData != null && separatorStructColumn != null)
+      changeMetaData.setSeparatorStructColumn(separatorStructColumn);
+
     ArangoDB db = dbBld.build();
     database = db.db(databaseName);
     schema = databaseName.replaceAll("[^a-zA-Z_]", "");
